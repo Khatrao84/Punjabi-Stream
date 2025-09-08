@@ -7,6 +7,9 @@
   <!-- Favicon -->
   <link rel="icon" href="https://i.postimg.cc/FRDPFKpY/favicon-96x96.png" type="image/png">
 
+  <!-- Include HLS.js library for HLS fallback support -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
   <style>
     html, body {
       margin: 0;
@@ -111,12 +114,36 @@
   <script>
     // ✅ Your 6 channels with real names (added DD Punjabi as the 6th channel)
     const CHANNELS = [
-      { name: "1. Patna Sahib LIVE", url: "https://www.youtube.com/embed/live_stream?channel=UC3nqw1kd4AK1q9e68YUoLDQ&autoplay=1", type: "youtube" },
-      { name: "2. PTC News LIVE", url: "https://www.youtube.com/embed/live_stream?channel=UCQLEbraENUGWh6p1Rv664rQ&autoplay=1", type: "youtube" }, 
-      { name: "3. Hazur Sahib LIVE", url: "https://www.youtube.com/embed/live_stream?channel=UCuerQ47I9Y2qxr4eIopxbYw&autoplay=1", type: "youtube" },
-      { name: "4. Fatehgarh Sahib LIVE", url: "https://www.youtube.com/embed/live_stream?channel=UCudVHqnOekwcvpzNpY8_ERw&autoplay=1", type: "youtube" },
-      { name: "5. Chardikla Time TV", url: "https://www.yupptv.com/yupptvnew/channels/chardikala-time-tv/live/embed", type: "iframe" },
-      { name: "6. DD Punjabi", url: "https://d3eyhgoylams0m.cloudfront.net/v1/manifest/93ce20f0f52760bf38be911ff4c91ed02aa2fd92/ed7bd2c7-8d10-4051-b397-2f6b90f99acb/20c8ad14-a158-4a42-8889-e032d070856e/2.m3u8", type: "hls" }
+      { 
+        name: "1. Patna Sahib LIVE", 
+        url: "https://www.youtube.com/embed/live_stream?channel=UC3nqw1kd4AK1q9e68YUoLDQ&autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0", 
+        type: "youtube" 
+      },
+      { 
+        name: "2. PTC News LIVE", 
+        url: "https://www.youtube.com/embed/live_stream?channel=UCQLEbraENUGWh6p1Rv664rQ&autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0", 
+        type: "youtube" 
+      }, 
+      { 
+        name: "3. Hazur Sahib LIVE", 
+        url: "https://www.youtube.com/embed/live_stream?channel=UCuerQ47I9Y2qxr4eIopxbYw&autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0", 
+        type: "youtube" 
+      },
+      { 
+        name: "4. Fatehgarh Sahib LIVE", 
+        url: "https://www.youtube.com/embed/live_stream?channel=UCudVHqnOekwcvpzNpY8_ERw&autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0", 
+        type: "youtube" 
+      },
+      { 
+        name: "5. Chardikla Time TV", 
+        url: "https://www.yupptv.com/yupptvnew/channels/chardikala-time-tv/live/embed", 
+        type: "iframe" 
+      },
+      { 
+        name: "6. DD Punjabi", 
+        url: "https://d3eyhgoylams0m.cloudfront.net/v1/manifest/93ce20f0f52760bf38be911ff4c91ed02aa2fd92/ed7bd2c7-8d10-4051-b397-2f6b90f99acb/20c8ad14-a158-4a42-8889-e032d070856e/2.m3u8", 
+        type: "hls" 
+      }
     ];
 
     let currentChannel = 0;
@@ -124,6 +151,7 @@
     const HLS_VIDEO = document.getElementById('hls-video');
     const channelNameBox = document.getElementById('channelName');
     let hideTimeout;
+    let hls = null; // HLS.js instance
 
     // Hide video controls completely
     HLS_VIDEO.controls = false;
@@ -135,6 +163,12 @@
       // Hide both players initially
       IFRAME.style.display = 'none';
       HLS_VIDEO.style.display = 'none';
+      
+      // Clean up any existing HLS instance
+      if (hls) {
+        hls.destroy();
+        hls = null;
+      }
       
       const channel = CHANNELS[index];
       
@@ -148,7 +182,7 @@
         HLS_VIDEO.style.display = 'block';
         IFRAME.src = '';
         
-        // For WebOS TV, use native HLS support
+        // For WebOS TV and browsers with native HLS support
         if (HLS_VIDEO.canPlayType('application/vnd.apple.mpegurl')) {
           HLS_VIDEO.src = channel.url;
           HLS_VIDEO.addEventListener('loadedmetadata', function() {
@@ -156,9 +190,19 @@
               console.log("Autoplay prevented, trying with user gesture");
             });
           });
+        } else if (Hls.isSupported()) {
+          // Use HLS.js as fallback for browsers without native HLS support
+          hls = new Hls();
+          hls.loadSource(channel.url);
+          hls.attachMedia(HLS_VIDEO);
+          hls.on(Hls.Events.MANIFEST_PARSED, function() {
+            HLS_VIDEO.play().catch(e => {
+              console.log("Autoplay prevented, trying with user gesture");
+            });
+          });
         } else {
-          // Fallback for browsers without native HLS support
-          console.log("HLS not natively supported");
+          console.log("HLS not supported in this browser");
+          // Fallback message could be shown to the user here
         }
       }
       
@@ -224,5 +268,3 @@
   </script>
 </body>
 </html>
-
-
