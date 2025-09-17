@@ -205,6 +205,7 @@
     let refreshTimer = null; // Auto-refresh timer
     let fallbackTimeout = null; // Fallback check timer
     let usingFallback = false; // Track if using fallback stream
+    let streamMonitoringInterval = null; // For continuous stream monitoring
 
     // Hide video controls completely
     HLS_VIDEO.controls = false;
@@ -232,6 +233,12 @@
         fallbackTimeout = null;
       }
       
+      // Clear any existing monitoring interval
+      if (streamMonitoringInterval) {
+        clearInterval(streamMonitoringInterval);
+        streamMonitoringInterval = null;
+      }
+      
       const channel = CHANNELS[index];
       usingFallback = false;
       
@@ -247,6 +254,9 @@
             // If the stream hasn't loaded after 4 seconds, try the fallback
             checkStreamStatus();
           }, 4000);
+          
+          // Set up continuous monitoring for this stream
+          startStreamMonitoring();
         }
       } else if (channel.type === 'hls') {
         // Use native video element for HLS streams (better WebOS compatibility)
@@ -280,6 +290,16 @@
       showChannelName(channel.name);
     }
 
+    // Start continuous monitoring of the stream
+    function startStreamMonitoring() {
+      // Check every 10 seconds if the stream is still working
+      streamMonitoringInterval = setInterval(() => {
+        if (currentChannel === 0 && !usingFallback) {
+          checkStreamStatus();
+        }
+      }, 10000); // Check every 10 seconds
+    }
+
     // Check if the stream is working, if not use fallback
     function checkStreamStatus() {
       // If we're already using fallback, don't check again
@@ -291,6 +311,13 @@
         // If we can access the document and it has little content, likely not working
         if (iframeDoc.body.innerText.length < 100) {
           useFallback();
+        } else {
+          // Additional check for YouTube's "offline" message
+          if (iframeDoc.body.innerText.includes("offline") || 
+              iframeDoc.body.innerText.includes("ended") ||
+              iframeDoc.body.innerText.includes("unavailable")) {
+            useFallback();
+          }
         }
       } catch (e) {
         // If we can't access the iframe document, use fallback
@@ -305,6 +332,12 @@
         IFRAME.src = CHANNELS[0].fallback;
         // Keep the channel name the same as originally specified
         showChannelName(CHANNELS[0].name);
+        
+        // Stop monitoring since we're now on the fallback
+        if (streamMonitoringInterval) {
+          clearInterval(streamMonitoringInterval);
+          streamMonitoringInterval = null;
+        }
       }
     }
 
