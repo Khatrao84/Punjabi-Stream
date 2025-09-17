@@ -117,6 +117,7 @@
       { 
         name: "1. Patna Sahib LIVE", 
         url: "https://www.youtube.com/embed/live_stream?channel=UC3nqw1kd4AK1q9e68YUoLDQ&autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0", 
+        fallback: "https://www.youtube.com/embed/TxSC4pCmrYY?autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0",
         type: "youtube" 
       },
       { 
@@ -202,6 +203,8 @@
     let hideTimeout;
     let hls = null; // HLS.js instance
     let refreshTimer = null; // Auto-refresh timer
+    let fallbackTimeout = null; // Fallback check timer
+    let usingFallback = false; // Track if using fallback stream
 
     // Hide video controls completely
     HLS_VIDEO.controls = false;
@@ -223,13 +226,28 @@
         hls = null;
       }
       
+      // Clear any existing fallback timeout
+      if (fallbackTimeout) {
+        clearTimeout(fallbackTimeout);
+        fallbackTimeout = null;
+      }
+      
       const channel = CHANNELS[index];
+      usingFallback = false;
       
       if (channel.type === 'youtube' || channel.type === 'iframe') {
         // Use iframe for YouTube and other iframe-based streams
         IFRAME.style.display = 'block';
         IFRAME.src = channel.url;
         HLS_VIDEO.pause();
+        
+        // Set up fallback check for Patna Sahib (4 seconds)
+        if (index === 0 && channel.fallback) {
+          fallbackTimeout = setTimeout(() => {
+            // If the stream hasn't loaded after 4 seconds, try the fallback
+            checkStreamStatus();
+          }, 4000);
+        }
       } else if (channel.type === 'hls') {
         // Use native video element for HLS streams (better WebOS compatibility)
         HLS_VIDEO.style.display = 'block';
@@ -260,6 +278,34 @@
       }
       
       showChannelName(channel.name);
+    }
+
+    // Check if the stream is working, if not use fallback
+    function checkStreamStatus() {
+      // If we're already using fallback, don't check again
+      if (usingFallback) return;
+      
+      // Check if the iframe has content (very basic check)
+      try {
+        const iframeDoc = IFRAME.contentDocument || IFRAME.contentWindow.document;
+        // If we can access the document and it has little content, likely not working
+        if (iframeDoc.body.innerText.length < 100) {
+          useFallback();
+        }
+      } catch (e) {
+        // If we can't access the iframe document, use fallback
+        useFallback();
+      }
+    }
+
+    // Use the fallback stream for Patna Sahib
+    function useFallback() {
+      if (currentChannel === 0 && CHANNELS[0].fallback && !usingFallback) {
+        usingFallback = true;
+        IFRAME.src = CHANNELS[0].fallback;
+        // Keep the channel name the same as originally specified
+        showChannelName(CHANNELS[0].name);
+      }
     }
 
     function showChannelName(name) {
