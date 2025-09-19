@@ -9,6 +9,8 @@
 
   <!-- Include HLS.js library for HLS fallback support -->
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <!-- YouTube IFrame API -->
+  <script src="https://www.youtube.com/iframe_api"></script>
 
   <style>
     html, body {
@@ -28,16 +30,6 @@
       position: relative;
       width: 100vw;
       height: 100vh;
-    }
-
-    #youtube-player {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 0;
-      display: none;
     }
 
     #stream {
@@ -135,7 +127,6 @@
 </head>
 <body>
   <div id="container">
-    <div id="youtube-player"></div>
     <iframe id="stream" allow="autoplay; fullscreen" allowfullscreen></iframe>
     <video id="hls-video" playsinline></video>
     <div id="overlay"></div>
@@ -150,26 +141,22 @@
         name: "1. Patna Sahib LIVE", 
         url: "https://www.youtube.com/embed/live_stream?channel=UCrrrlDzu3AqIDPzzSXsViLQ&autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0",  
         fallback: "https://www.youtube.com/embed/TxSC4pCmrYY?autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0",
-        type: "youtube",
-        channelId: "UCrrrlDzu3AqIDPzzSXsViLQ"
+        type: "youtube" 
       },
       { 
         name: "2. PTC News LIVE", 
         url: "https://www.youtube.com/embed/live_stream?channel=UCQLEbraENUGWh6p1Rv664rQ&autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0", 
-        type: "youtube",
-        channelId: "UCQLEbraENUGWh6p1Rv664rQ"
+        type: "youtube" 
       }, 
       { 
         name: "3. Hazur Sahib LIVE", 
         url: "https://www.youtube.com/embed/live_stream?channel=UCuerQ47I9Y2qxr4eIopxbYw&autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0", 
-        type: "youtube",
-        channelId: "UCuerQ47I9Y2qxr4eIopxbYw"
+        type: "youtube" 
       },
       { 
         name: "4. Fatehgarh Sahib LIVE", 
         url: "https://www.youtube.com/embed/live_stream?channel=UCudVHqnOekwcvpzNpY8_ERw&autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0", 
-        type: "youtube",
-        channelId: "UCudVHqnOekwcvpzNpY8_ERw"
+        type: "youtube" 
       },
       { 
         name: "5. Chardikla Time TV", 
@@ -234,7 +221,6 @@
     }
     
     const IFRAME = document.getElementById('stream');
-    const YOUTUBE_PLAYER_CONTAINER = document.getElementById('youtube-player');
     const HLS_VIDEO = document.getElementById('hls-video');
     const channelNameBox = document.getElementById('channelName');
     const loadingIndicator = document.getElementById('loading');
@@ -252,102 +238,19 @@
       e.preventDefault(); // Disable right-click menu on video
     }, false);
 
-    // Load YouTube IFrame API
-    let tag = document.createElement('script');
-    tag.src = "https://www.youtube.com/iframe_api";
-    let firstScriptTag = document.getElementsByTagName('script')[0];
-    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-
-    // YouTube API ready callback
-    window.onYouTubeIframeAPIReady = function() {
-      console.log("YouTube API is ready");
-      // The player will be created once we load a YouTube channel
-      if (currentChannel < 4) { // 0-3 are YouTube channels
-        loadChannel(currentChannel);
-      }
-    };
-
-    function createYouTubePlayer(channelId) {
-      // Destroy existing player if any
-      if (youtubePlayer) {
-        youtubePlayer.destroy();
-        youtubePlayer = null;
-      }
-      
-      // Create new player - NO API KEY NEEDED
-      youtubePlayer = new YT.Player('youtube-player', {
-        height: '100%',
-        width: '100%',
-        playerVars: {
-          'autoplay': 1,
-          'controls': 0,
-          'modestbranding': 1,
-          'rel': 0,
-          'showinfo': 0
-        },
-        events: {
-          'onReady': onPlayerReady,
-          'onStateChange': onPlayerStateChange,
-          'onError': onPlayerError
-        }
-      });
-      
-      // Load the live stream
-      function onPlayerReady(event) {
-        console.log("YouTube player ready");
-        loadingIndicator.style.display = 'none';
-        
-        // Try to load the live stream for the channel
-        // This approach works without an API key
-        event.target.loadVideoByUrl(`https://www.youtube.com/embed/live_stream?channel=${channelId}&autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0`);
-      }
-      
-      function onPlayerStateChange(event) {
-        // Player state changes (unstarted, ended, playing, paused, buffering, cued)
-        console.log("Player state changed:", event.data);
-        
-        if (event.data === YT.PlayerState.PLAYING) {
-          // Video is playing, clear any fallback timeout
-          if (fallbackTimeout) {
-            clearTimeout(fallbackTimeout);
-            fallbackTimeout = null;
-          }
-        } else if (event.data === YT.PlayerState.ENDED || 
-                  event.data === YT.PlayerState.CUED) {
-          // Video ended or was cued, check if we need to handle this
-          console.log("Player ended or cued");
-        } else if (event.data === YT.PlayerState.BUFFERING) {
-          console.log("Player buffering");
-        } else if (event.data === YT.PlayerState.UNSTARTED) {
-          console.log("Player unstarted");
-          // If unstarted for too long, might need fallback
-          if (currentChannel === 0) {
-            fallbackTimeout = setTimeout(() => {
-              if (youtubePlayer && youtubePlayer.getPlayerState() === YT.PlayerState.UNSTARTED) {
-                useFallback();
-              }
-            }, 10000); // 10 seconds
-          }
-        }
-      }
-      
-      function onPlayerError(event) {
-        console.log("YouTube player error:", event.data);
-        // If this is channel 0, try the fallback
-        if (currentChannel === 0 && CHANNELS[0].fallback && !usingFallback) {
-          useFallback();
-        }
-      }
+    // YouTube API ready
+    function onYouTubeIframeAPIReady() {
+      // This function will be called when the API is ready
+      console.log("YouTube API ready");
     }
 
     function loadChannel(index) {
       // Save the current channel to storage
       storage.setItem('currentChannel', index);
       
-      // Hide all players initially
+      // Hide both players initially
       IFRAME.style.display = 'none';
       HLS_VIDEO.style.display = 'none';
-      YOUTUBE_PLAYER_CONTAINER.style.display = 'none';
       loadingIndicator.style.display = 'block';
       
       // Clean up any existing HLS instance
@@ -368,42 +271,34 @@
         streamMonitoringInterval = null;
       }
       
+      // Remove YouTube player if it exists
+      if (youtubePlayer) {
+        youtubePlayer.destroy();
+        youtubePlayer = null;
+      }
+      
       const channel = CHANNELS[index];
       usingFallback = false;
       
-      if (channel.type === 'youtube') {
-        // Use YouTube IFrame API for better control
-        if (window.YT && YT.Player) {
-          YOUTUBE_PLAYER_CONTAINER.style.display = 'block';
-          IFRAME.style.display = 'none';
-          HLS_VIDEO.pause();
-          createYouTubePlayer(channel.channelId);
-        } else {
-          // Fallback to iframe if API isn't loaded yet
-          console.log("YouTube API not loaded, using iframe fallback");
-          IFRAME.style.display = 'block';
-          YOUTUBE_PLAYER_CONTAINER.style.display = 'none';
-          IFRAME.src = channel.url;
-          
-          // Set up fallback check for Patna Sahib (15 seconds)
-          if (index === 0 && channel.fallback) {
-            fallbackTimeout = setTimeout(() => {
-              checkStreamStatus();
-            }, 15000);
-          }
-        }
-      } else if (channel.type === 'iframe') {
-        // Use iframe for non-YouTube streams
+      if (channel.type === 'youtube' || channel.type === 'iframe') {
+        // Use iframe for YouTube and other iframe-based streams
         IFRAME.style.display = 'block';
-        YOUTUBE_PLAYER_CONTAINER.style.display = 'none';
-        HLS_VIDEO.style.display = 'none';
         IFRAME.src = channel.url;
         HLS_VIDEO.pause();
+        
+        // Set up fallback check for Patna Sahib (15 seconds)
+        if (index === 0 && channel.fallback) {
+          fallbackTimeout = setTimeout(() => {
+            // If the stream hasn't loaded after 15 seconds, try the fallback
+            checkStreamStatus();
+          }, 15000);
+          
+          // Set up continuous monitoring for this stream
+          startStreamMonitoring();
+        }
       } else if (channel.type === 'hls') {
         // Use native video element for HLS streams (better WebOS compatibility)
         HLS_VIDEO.style.display = 'block';
-        IFRAME.style.display = 'none';
-        YOUTUBE_PLAYER_CONTAINER.style.display = 'none';
         IFRAME.src = '';
         
         // For WebOS TV and browsers with native HLS support
@@ -437,20 +332,37 @@
         } else {
           console.log("HLS not supported in this browser");
           loadingIndicator.style.display = 'none';
+          // Fallback message could be shown to the user here
         }
+      } else {
+        loadingIndicator.style.display = 'none';
       }
       
       showChannelName(channel.name);
     }
+
+    // Start continuous monitoring of the stream
+    function startStreamMonitoring() {
+      // Check every 15 seconds if the stream is still working
+      streamMonitoringInterval = setInterval(() => {
+        if (currentChannel === 0 && !usingFallback) {
+          checkStreamStatus();
+        }
+      }, 15000); // Check every 15 seconds
+    } 
     
     // Check if the stream is working, if not use fallback
     function checkStreamStatus() {
       // If we're already using fallback, don't check again
       if (usingFallback) return;
       
-      // For YouTube iframe (not using API), we can't reliably check the content
+      // For YouTube streams, we can't reliably check the content due to cross-origin restrictions
       // Instead, we'll use a more conservative approach
       try {
+        // Try to detect if the YouTube player is in an error state
+        // This is a best-effort approach since we can't directly access the YouTube iframe's internals
+        const iframeSrc = IFRAME.src;
+        
         // If the iframe has loaded but we can't detect playing state, 
         // we'll assume it's working and cancel the fallback
         console.log("Stream check - assuming stream is working unless proven otherwise");
@@ -471,18 +383,15 @@
     function useFallback() {
       if (currentChannel === 0 && CHANNELS[0].fallback && !usingFallback) {
         usingFallback = true;
-        
-        // If we were using the YouTube API player, switch to iframe
-        if (youtubePlayer) {
-          youtubePlayer.destroy();
-          youtubePlayer = null;
-          YOUTUBE_PLAYER_CONTAINER.style.display = 'none';
-          IFRAME.style.display = 'block';
-        }
-        
         IFRAME.src = CHANNELS[0].fallback;
         // Keep the channel name the same as originally specified
         showChannelName(CHANNELS[0].name);
+        
+        // Stop monitoring since we're now on the fallback
+        if (streamMonitoringInterval) {
+          clearInterval(streamMonitoringInterval);
+          streamMonitoringInterval = null;
+        }
       }
     }
 
@@ -512,29 +421,7 @@
     }
 
     // Load the saved channel or first channel
-    // Wait for YouTube API to load if needed for YouTube channels
-    if (currentChannel < 4) { // 0-3 are YouTube channels
-      // Check if YouTube API is already loaded
-      if (window.YT && YT.Player) {
-        loadChannel(currentChannel);
-      } else {
-        // Wait for API to load
-        let apiCheck = setInterval(() => {
-          if (window.YT && YT.Player) {
-            clearInterval(apiCheck);
-            loadChannel(currentChannel);
-          }
-        }, 100);
-        
-        // Fallback after 5 seconds if API doesn't load
-        setTimeout(() => {
-          clearInterval(apiCheck);
-          loadChannel(currentChannel);
-        }, 5000);
-      }
-    } else {
-      loadChannel(currentChannel);
-    }
+    loadChannel(currentChannel);
 
     // Set up auto-refresh
     setupAutoRefresh();
