@@ -4,12 +4,9 @@
   <meta charset="UTF-8">
   <title>Punjabi Stream</title>
 
-  <!-- Favicon -->
   <link rel="icon" href="https://i.postimg.cc/FRDPFKpY/favicon-96x96.png" type="image/png">
 
-  <!-- Include HLS.js library for HLS fallback support -->
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-  <!-- YouTube IFrame API -->
   <script src="https://www.youtube.com/iframe_api"></script>
 
   <style>
@@ -41,8 +38,13 @@
       border: none;
       z-index: 0;
     }
+    
+    #stream iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
 
-    /* Video element for HLS streams */
     #hls-video {
       position: absolute;
       top: 0;
@@ -54,24 +56,11 @@
       display: none;
     }
 
-    /* Hide all video controls for WebOS */
-    #hls-video::-webkit-media-controls {
-      display: none !important;
-    }
-    
-    #hls-video::-webkit-media-controls-panel {
-      display: none !important;
-    }
-    
-    #hls-video::-webkit-media-controls-play-button {
-      display: none !important;
-    }
-    
-    #hls-video::-webkit-media-controls-start-playback-button {
-      display: none !important;
-    }
+    #hls-video::-webkit-media-controls { display: none !important; }
+    #hls-video::-webkit-media-controls-panel { display: none !important; }
+    #hls-video::-webkit-media-controls-play-button { display: none !important; }
+    #hls-video::-webkit-media-controls-start-playback-button { display: none !important; }
 
-    /* Transparent overlay to capture clicks */
     #overlay {
       position: absolute;
       top: 0;
@@ -82,10 +71,9 @@
       cursor: pointer;
     }
 
-    /* Channel name bar at bottom with slide animation */
     #channelName {
       position: absolute;
-      bottom: -60px; /* start hidden below */
+      bottom: -60px;
       left: 0;
       width: 100%;
       background: rgba(0,41,107,0.7);
@@ -100,11 +88,10 @@
     }
 
     #channelName.show {
-      bottom: 0; /* slide up into view */
+      bottom: 0;
       opacity: 1;
     }
     
-    /* Loading indicator */
     .loading {
       position: absolute;
       top: 50%;
@@ -127,7 +114,7 @@
 </head>
 <body>
   <div id="container">
-    <iframe id="stream" allow="autoplay; fullscreen" allowfullscreen></iframe>
+    <div id="stream"></div>
     <video id="hls-video" playsinline></video>
     <div id="overlay"></div>
     <div id="channelName"></div>
@@ -135,11 +122,10 @@
   </div>
 
   <script>
-    // ✅ Your 6 channels with real names (added DD Punjabi as the 6th channel)
     const CHANNELS = [
       { 
         name: "1. Patna Sahib LIVE", 
-        url: "https://www.youtube.com/embed/live_stream?channel=UCrrrlDzu3AqIDPzzSXsViLQ&autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0",  
+        url: "https://www.youtube.com/embed/live_stream?channel=UCrrrlDzu3AqIDPzzSXsViLQ",  
         fallback: "https://www.youtube.com/embed/TxSC4pCmrYY?autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0",
         type: "youtube" 
       },
@@ -170,14 +156,12 @@
       }
     ];
 
-    // Safe localStorage access with fallback for WebOS
     const storage = {
       setItem: (key, value) => {
         try {
           localStorage.setItem(key, value);
         } catch (e) {
           console.log("LocalStorage not available, using fallback");
-          // Create a cookie fallback if localStorage fails
           document.cookie = `${key}=${value}; max-age=31536000; path=/`;
         }
       },
@@ -186,31 +170,24 @@
           return localStorage.getItem(key);
         } catch (e) {
           console.log("LocalStorage not available, using fallback");
-          // Check cookies if localStorage fails
           const name = key + "=";
           const decodedCookie = decodeURIComponent(document.cookie);
           const ca = decodedCookie.split(';');
           for(let i = 0; i < ca.length; i++) {
             let c = ca[i];
-            while (c.charAt(0) === ' ') {
-              c = c.substring(1);
-            }
-            if (c.indexOf(name) === 0) {
-              return c.substring(name.length, c.length);
-            }
+            while (c.charAt(0) === ' ') c = c.substring(1);
+            if (c.indexOf(name) === 0) return c.substring(name.length, c.length);
           }
           return null;
         }
       }
     };
 
-    // Try to load saved channel from storage, default to 0 if not found
     let currentChannel = 0;
     try {
       const savedChannel = storage.getItem('currentChannel');
       if (savedChannel !== null && !isNaN(savedChannel)) {
         currentChannel = parseInt(savedChannel);
-        // Ensure the channel number is within valid range
         if (currentChannel < 0 || currentChannel >= CHANNELS.length) {
           currentChannel = 0;
         }
@@ -220,226 +197,164 @@
       currentChannel = 0;
     }
     
-    const IFRAME = document.getElementById('stream');
+    const STREAM_DIV = document.getElementById('stream');
     const HLS_VIDEO = document.getElementById('hls-video');
     const channelNameBox = document.getElementById('channelName');
     const loadingIndicator = document.getElementById('loading');
     let hideTimeout;
-    let hls = null; // HLS.js instance
-    let refreshTimer = null; // Auto-refresh timer
-    let fallbackTimeout = null; // Fallback check timer
-    let usingFallback = false; // Track if using fallback stream
-    let streamMonitoringInterval = null; // For continuous stream monitoring
-    let youtubePlayer = null; // YouTube player instance
+    let hls = null;
+    let refreshTimer = null;
+    let usingFallback = false;
+    let youtubePlayer = null;
 
-    // Hide video controls completely
     HLS_VIDEO.controls = false;
-    HLS_VIDEO.addEventListener('contextmenu', function(e) {
-      e.preventDefault(); // Disable right-click menu on video
-    }, false);
+    HLS_VIDEO.addEventListener('contextmenu', e => e.preventDefault(), false);
 
-    // YouTube API ready
     function onYouTubeIframeAPIReady() {
-      // This function will be called when the API is ready
       console.log("YouTube API ready");
+      loadChannel(currentChannel);
+    }
+
+    function getChannelIdFromUrl(url) {
+      try {
+        const urlObj = new URL(url);
+        return urlObj.searchParams.get("channel");
+      } catch (e) { return null; }
     }
 
     function loadChannel(index) {
-      // Save the current channel to storage
       storage.setItem('currentChannel', index);
       
-      // Hide both players initially
-      IFRAME.style.display = 'none';
-      HLS_VIDEO.style.display = 'none';
       loadingIndicator.style.display = 'block';
-      
-      // Clean up any existing HLS instance
-      if (hls) {
-        hls.destroy();
-        hls = null;
-      }
-      
-      // Clear any existing fallback timeout
-      if (fallbackTimeout) {
-        clearTimeout(fallbackTimeout);
-        fallbackTimeout = null;
-      }
-      
-      // Clear any existing monitoring interval
-      if (streamMonitoringInterval) {
-        clearInterval(streamMonitoringInterval);
-        streamMonitoringInterval = null;
-      }
-      
-      // Remove YouTube player if it exists
-      if (youtubePlayer) {
-        youtubePlayer.destroy();
-        youtubePlayer = null;
-      }
+      STREAM_DIV.style.display = 'none';
+      HLS_VIDEO.style.display = 'none';
+      HLS_VIDEO.pause();
+      STREAM_DIV.innerHTML = '';
+      usingFallback = false;
+
+      if (hls) { hls.destroy(); hls = null; }
+      if (youtubePlayer) { youtubePlayer.destroy(); youtubePlayer = null; }
       
       const channel = CHANNELS[index];
-      usingFallback = false;
       
-      if (channel.type === 'youtube' || channel.type === 'iframe') {
-        // Use iframe for YouTube and other iframe-based streams
-        IFRAME.style.display = 'block';
-        IFRAME.src = channel.url;
-        HLS_VIDEO.pause();
-        
-        // Set up fallback check for Patna Sahib (15 seconds)
+      if (channel.type === 'youtube') {
+        STREAM_DIV.style.display = 'block';
+        // Use API for Channel 1 to enable fallback, use simple iframe for others
         if (index === 0 && channel.fallback) {
-          fallbackTimeout = setTimeout(() => {
-            // If the stream hasn't loaded after 15 seconds, try the fallback
-            checkStreamStatus();
-          }, 15000);
-          
-          // Set up continuous monitoring for this stream
-          startStreamMonitoring();
+          const channelId = getChannelIdFromUrl(channel.url);
+          if (channelId) {
+            youtubePlayer = new YT.Player('stream', {
+              height: '100%', width: '100%',
+              playerVars: {
+                'autoplay': 1, 'controls': 0, 'rel': 0, 'showinfo': 0, 
+                'modestbranding': 1, 'playlist': 'live_stream', 'channel': channelId
+              },
+              events: { 'onReady': onPlayerReady, 'onError': onPlayerError }
+            });
+          }
+        } else {
+          // For other YouTube channels, a simple iframe is more reliable
+          const iframe = document.createElement('iframe');
+          iframe.src = channel.url;
+          iframe.setAttribute('allow', 'autoplay; fullscreen');
+          iframe.setAttribute('allowfullscreen', '');
+          iframe.onload = () => loadingIndicator.style.display = 'none';
+          STREAM_DIV.appendChild(iframe);
         }
+      } else if (channel.type === 'iframe') {
+        STREAM_DIV.style.display = 'block';
+        const iframe = document.createElement('iframe');
+        iframe.src = channel.url;
+        iframe.setAttribute('allow', 'autoplay; fullscreen');
+        iframe.setAttribute('allowfullscreen', '');
+        iframe.onload = () => loadingIndicator.style.display = 'none';
+        STREAM_DIV.appendChild(iframe);
       } else if (channel.type === 'hls') {
-        // Use native video element for HLS streams (better WebOS compatibility)
         HLS_VIDEO.style.display = 'block';
-        IFRAME.src = '';
-        
-        // For WebOS TV and browsers with native HLS support
         if (HLS_VIDEO.canPlayType('application/vnd.apple.mpegurl')) {
           HLS_VIDEO.src = channel.url;
-          HLS_VIDEO.addEventListener('loadedmetadata', function() {
-            HLS_VIDEO.play().catch(e => {
-              console.log("Autoplay prevented, trying with user gesture");
-            });
+          HLS_VIDEO.addEventListener('loadedmetadata', () => {
+            HLS_VIDEO.play().catch(e => console.log("Autoplay prevented"));
             loadingIndicator.style.display = 'none';
           });
-          HLS_VIDEO.addEventListener('error', function() {
-            console.log("HLS video error");
+          HLS_VIDEO.addEventListener('error', () => {
+            console.log("HLS native video error");
             loadingIndicator.style.display = 'none';
           });
         } else if (Hls.isSupported()) {
-          // Use HLS.js as fallback for browsers without native HLS support
           hls = new Hls();
           hls.loadSource(channel.url);
           hls.attachMedia(HLS_VIDEO);
-          hls.on(Hls.Events.MANIFEST_PARSED, function() {
-            HLS_VIDEO.play().catch(e => {
-              console.log("Autoplay prevented, trying with user gesture");
-            });
+          hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            HLS_VIDEO.play().catch(e => console.log("Autoplay prevented"));
             loadingIndicator.style.display = 'none';
           });
-          hls.on(Hls.Events.ERROR, function(event, data) {
+          hls.on(Hls.Events.ERROR, (event, data) => {
             console.log("HLS.js error:", data);
             loadingIndicator.style.display = 'none';
           });
         } else {
-          console.log("HLS not supported in this browser");
+          console.log("HLS not supported");
           loadingIndicator.style.display = 'none';
-          // Fallback message could be shown to the user here
         }
       } else {
         loadingIndicator.style.display = 'none';
       }
       
       showChannelName(channel.name);
+      setupAutoRefresh();
     }
 
-    // Start continuous monitoring of the stream
-    function startStreamMonitoring() {
-      // Check every 15 seconds if the stream is still working
-      streamMonitoringInterval = setInterval(() => {
-        if (currentChannel === 0 && !usingFallback) {
-          checkStreamStatus();
-        }
-      }, 15000); // Check every 15 seconds
-    } 
-    
-    // Check if the stream is working, if not use fallback
-    function checkStreamStatus() {
-      // If we're already using fallback, don't check again
-      if (usingFallback) return;
-      
-      // For YouTube streams, we can't reliably check the content due to cross-origin restrictions
-      // Instead, we'll use a more conservative approach
-      try {
-        // Try to detect if the YouTube player is in an error state
-        // This is a best-effort approach since we can't directly access the YouTube iframe's internals
-        const iframeSrc = IFRAME.src;
-        
-        // If the iframe has loaded but we can't detect playing state, 
-        // we'll assume it's working and cancel the fallback
-        console.log("Stream check - assuming stream is working unless proven otherwise");
-        
-        // Clear the fallback timeout since the stream seems to be working
-        if (fallbackTimeout) {
-          clearTimeout(fallbackTimeout);
-          fallbackTimeout = null;
-        }
-      } catch (e) {
-        // If we can't access the iframe, use fallback
-        console.log("Cannot access iframe, using fallback");
+    function onPlayerReady(event) {
+      loadingIndicator.style.display = 'none';
+      event.target.playVideo();
+    }
+
+    function onPlayerError(event) {
+      console.log("YouTube Player Error:", event.data);
+      loadingIndicator.style.display = 'none';
+      if (currentChannel === 0 && CHANNELS[0].fallback && !usingFallback) {
         useFallback();
       }
     }
 
-    // Use the fallback stream for Patna Sahib
     function useFallback() {
-      if (currentChannel === 0 && CHANNELS[0].fallback && !usingFallback) {
-        usingFallback = true;
-        IFRAME.src = CHANNELS[0].fallback;
-        // Keep the channel name the same as originally specified
-        showChannelName(CHANNELS[0].name);
-        
-        // Stop monitoring since we're now on the fallback
-        if (streamMonitoringInterval) {
-          clearInterval(streamMonitoringInterval);
-          streamMonitoringInterval = null;
-        }
-      }
+      console.log("Primary stream failed. Using fallback.");
+      usingFallback = true;
+      if (youtubePlayer) { youtubePlayer.destroy(); youtubePlayer = null; }
+      STREAM_DIV.innerHTML = '';
+      const iframe = document.createElement('iframe');
+      iframe.src = CHANNELS[0].fallback;
+      iframe.setAttribute('allow', 'autoplay; fullscreen');
+      iframe.setAttribute('allowfullscreen', '');
+      iframe.onload = () => loadingIndicator.style.display = 'none';
+      STREAM_DIV.appendChild(iframe);
+      showChannelName(CHANNELS[0].name);
     }
 
     function showChannelName(name) {
       channelNameBox.textContent = name;
       channelNameBox.classList.add("show");
-
       clearTimeout(hideTimeout);
       hideTimeout = setTimeout(() => {
         channelNameBox.classList.remove("show");
-      }, 3000); // hide after 3 sec
+      }, 3000);
     }
 
-    // Function to set up auto-refresh
     function setupAutoRefresh() {
-      // Clear any existing timer
-      if (refreshTimer) {
-        clearTimeout(refreshTimer);
-      }
-      
-      // Set new timer to refresh after 60 minutes (3600000 milliseconds)
+      if (refreshTimer) clearTimeout(refreshTimer);
       refreshTimer = setTimeout(() => {
-        // Save current channel before refreshing
         storage.setItem('currentChannel', currentChannel);
         window.location.reload();
       }, 3600000); // 60 minutes
     }
 
-    // Load the saved channel or first channel
-    loadChannel(currentChannel);
+    document.getElementById('overlay').addEventListener('click', () => nextChannel());
 
-    // Set up auto-refresh
-    setupAutoRefresh();
-
-    // Overlay click → next channel
-    document.getElementById('overlay').addEventListener('click', () => {
-      nextChannel();
-    });
-
-    // Keyboard controls
     document.addEventListener('keydown', (e) => {
-      if (e.key === "ArrowRight" || e.key.toLowerCase() === "d") {
-        nextChannel();
-      } else if (e.key === "ArrowLeft" || e.key.toLowerCase() === "a") {
-        prevChannel();
-      } else if (/^[1-6]$/.test(e.key)) {
-        jumpToChannel(parseInt(e.key) - 1);
-      }
+      if (e.key === "ArrowRight" || e.key.toLowerCase() === "d") nextChannel();
+      else if (e.key === "ArrowLeft" || e.key.toLowerCase() === "a") prevChannel();
+      else if (/^[1-6]$/.test(e.key)) jumpToChannel(parseInt(e.key) - 1);
     });
 
     function nextChannel() {
@@ -457,37 +372,9 @@
       loadChannel(currentChannel);
     }
 
-    // WebOS TV optimization
-    document.body.addEventListener('click', function() {
-      // Force focus on body for remote control navigation
-      document.body.focus();
-    });
-
-    // Prevent default behaviors that might interfere with TV experience
-    document.addEventListener('keydown', function(e) {
-      if (e.keyCode === 8 || e.keyCode === 461) { // Back button
-        e.preventDefault();
-      }
-    });
-    
-    // Handle iframe load event to hide loading indicator
-    IFRAME.addEventListener('load', function() {
-      loadingIndicator.style.display = 'none';
-      
-      // For the first channel, if we have a fallback timeout set,
-      // clear it since the iframe loaded successfully
-      if (currentChannel === 0 && fallbackTimeout) {
-        clearTimeout(fallbackTimeout);
-        fallbackTimeout = null;
-      }
-    });
-    
-    // Handle iframe error event
-    IFRAME.addEventListener('error', function() {
-      loadingIndicator.style.display = 'none';
-      if (currentChannel === 0 && !usingFallback) {
-        useFallback();
-      }
+    document.body.addEventListener('click', () => document.body.focus());
+    document.addEventListener('keydown', (e) => {
+      if (e.keyCode === 8 || e.keyCode === 461) e.preventDefault();
     });
   </script>
 </body>
