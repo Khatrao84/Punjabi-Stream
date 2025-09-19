@@ -290,6 +290,16 @@
       showChannelName(channel.name);
     }
 
+   // Start continuous monitoring of the stream
+    function startStreamMonitoring() {
+      // Check every 15 seconds if the stream is still working
+      streamMonitoringInterval = setInterval(() => {
+        if (currentChannel === 0 && !usingFallback) {
+          checkStreamStatus();
+        }
+      }, 15000); // Check every 15 seconds
+    } 
+    
     // Check if the stream is working, if not use fallback
     function checkStreamStatus() {
       // If we're already using fallback, don't check again
