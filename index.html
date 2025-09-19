@@ -248,12 +248,12 @@
         IFRAME.src = channel.url;
         HLS_VIDEO.pause();
         
-        // Set up fallback check for Patna Sahib (4 seconds)
+        // Set up fallback check for Patna Sahib (15 seconds)
         if (index === 0 && channel.fallback) {
           fallbackTimeout = setTimeout(() => {
-            // If the stream hasn't loaded after 4 seconds, try the fallback
+            // If the stream hasn't loaded after 15 seconds, try the fallback
             checkStreamStatus();
-          }, 12000);
+          }, 15000);
           
           // Set up continuous monitoring for this stream
           startStreamMonitoring();
@@ -292,12 +292,12 @@
 
     // Start continuous monitoring of the stream
     function startStreamMonitoring() {
-      // Check every 10 seconds if the stream is still working
+      // Check every 15 seconds if the stream is still working
       streamMonitoringInterval = setInterval(() => {
         if (currentChannel === 0 && !usingFallback) {
           checkStreamStatus();
         }
-      }, 10000); // Check every 10 seconds
+      }, 15000); // Check every 15 seconds
     }
 
     // Check if the stream is working, if not use fallback
