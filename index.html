@@ -95,7 +95,11 @@
         youtubePlayer = new YT.Player('stream', {
           height: '100%', width: '100%',
           playerVars: { 'autoplay': 1, 'controls': 0, 'rel': 0, 'showinfo': 0, 'modestbranding': 1, 'playlist': 'live_stream', 'channel': channelId },
-          events: { 'onReady': onPlayerReady, 'onError': onPlayerError }
+          events: {
+            'onReady': onPlayerReady,
+            'onError': onPlayerError,
+            'onStateChange': onPlayerStateChange // Added event listener for state changes
+          }
         });
       }
     }
@@ -163,6 +167,15 @@
         setTimeout(createYTPlayerForChannel1, 1000);
       } else {
         console.log("Retry failed. Switching to fallback.");
+        useFallback();
+      }
+    }
+
+    // New function to handle the player's state changes
+    function onPlayerStateChange(event) {
+      // YT.PlayerState.ENDED is 0. This means the video/stream is over.
+      if (event.data === YT.PlayerState.ENDED && currentChannel === 0 && !usingFallback) {
+        console.log("Main stream has ended. Switching to fallback.");
         useFallback();
       }
     }
