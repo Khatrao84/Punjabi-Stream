@@ -52,13 +52,14 @@
 
   <script>
     const CHANNELS = [
-      { name: "1. Patna Sahib LIVE", url: "https://www.youtube.com/embed/live_stream?channel=UCrrrlDzu3AqIDPzzSXsViLQ", fallback: "https://www.youtube.com/embed/live_stream?channel=UChfKn8lKy182G8m6GZ_ATDw&autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0", type: "youtube" },
+      { name: "1. Patna Sahib LIVE", url: "https://www.youtube.com/embed/live_stream?channel=UCrrrlDzu3AqIDPzzSXsViLQ", 
+       fallback: "https://www.youtube.com/embed/live_stream?channel=UChfKn8lKy182G8m6GZ_ATDw&autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0", type: "youtube" },
       { name: "2. PTC News LIVE", url: "https://www.youtube.com/embed/live_stream?channel=UCQLEbraENUGWh6p1Rv664rQ&autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0", type: "youtube" },
-      { name: "3. Hazur Sahib LIVE", url: "https://www.youtube.com/embed/live_stream?channel=UCuerQ47I9Y2qxr4eIopxbYw&autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0", type: "youtube" },
-      { name: "4. Fatehgarh Sahib LIVE", url: "https://www.youtube.com/embed/live_stream?channel=UCudVHqnOekwcvpzNpY8_ERw&autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0", type: "youtube" },
-      { name: "5. Chardikla Time TV", url: "https://www.yupptv.com/yupptvnew/channels/chardikala-time-tv/live/embed", type: "iframe" },
-      { name: "6. DD Punjabi", url: "https://d3eyhgoylams0m.cloudfront.net/v1/manifest/93ce20f0f52760bf38be911ff4c91ed02aa2fd92/ed7bd2c7-8d10-4051-b397-2f6b90f99acb/20c8ad14-a158-4a42-8889-e032d070856e/2.m3u8", type: "hls" }
-    ];
+      { name: "3. Chardikla Time TV", url: "https://www.yupptv.com/yupptvnew/channels/chardikala-time-tv/live/embed", type: "iframe" },
+      { name: "4. DD Punjabi", url: "https://d3eyhgoylams0m.cloudfront.net/v1/manifest/93ce20f0f52760bf38be911ff4c91ed02aa2fd92/ed7bd2c7-8d10-4051-b397-2f6b90f99acb/20c8ad14-a158-4a42-8889-e032d070856e/2.m3u8", type: "hls" },
+      { name: "5. Fatehgarh Sahib LIVE", url: "https://www.youtube.com/embed/live_stream?channel=UCudVHqnOekwcvpzNpY8_ERw&autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0", type: "youtube" },
+      { name: "6. Hazur Sahib LIVE", url: "https://www.youtube.com/embed/live_stream?channel=UCuerQ47I9Y2qxr4eIopxbYw&autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0", type: "youtube" }
+         ];
 
     const storage = {
       setItem: (key, value) => { try { localStorage.setItem(key, value); } catch (e) { document.cookie = `${key}=${value}; max-age=31536000; path=/`; } },
