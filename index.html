@@ -85,23 +85,36 @@
     HLS_VIDEO.addEventListener('contextmenu', e => e.preventDefault());
 
     function onYouTubeIframeAPIReady() { loadChannel(currentChannel); }
-
-    function getChannelIdFromUrl(url) { try { return new URL(url).searchParams.get("channel"); } catch (e) { return null; } }
     
+    // This function now creates an iframe and attaches the API to it, which is more reliable.
     function createYTPlayerForChannel1() {
-      if (youtubePlayer) youtubePlayer.destroy();
-      const channelId = getChannelIdFromUrl(CHANNELS[0].url);
-      if (channelId) {
-        youtubePlayer = new YT.Player('stream', {
-          height: '100%', width: '100%',
-          playerVars: { 'autoplay': 1, 'controls': 0, 'rel': 0, 'showinfo': 0, 'modestbranding': 1, 'playlist': 'live_stream', 'channel': channelId },
-          events: {
-            'onReady': onPlayerReady,
-            'onError': onPlayerError,
-            'onStateChange': onPlayerStateChange // Added event listener for state changes
-          }
-        });
-      }
+      if (youtubePlayer) { youtubePlayer.destroy(); youtubePlayer = null; }
+      
+      // Create a URL with all necessary parameters, including enablejsapi=1
+      const playerUrl = new URL(CHANNELS[0].url);
+      playerUrl.searchParams.set('enablejsapi', '1');
+      playerUrl.searchParams.set('autoplay', '1');
+      playerUrl.searchParams.set('controls', '0');
+      playerUrl.searchParams.set('rel', '0');
+      playerUrl.searchParams.set('showinfo', '0');
+      playerUrl.searchParams.set('modestbranding', '1');
+
+      // Create the iframe manually
+      const iframe = document.createElement('iframe');
+      iframe.id = 'youtube-player-frame'; // Give it an ID to target
+      iframe.src = playerUrl.toString();
+      iframe.setAttribute('allow', 'autoplay; fullscreen');
+      STREAM_DIV.innerHTML = ''; // Clear the div
+      STREAM_DIV.appendChild(iframe);
+
+      // Attach the YT.Player to our manually created iframe
+      youtubePlayer = new YT.Player('youtube-player-frame', {
+        events: {
+          'onReady': onPlayerReady,
+          'onError': onPlayerError,
+          'onStateChange': onPlayerStateChange
+        }
+      });
     }
 
     function loadChannel(index) {
@@ -116,7 +129,7 @@
       usingFallback = false; channel1Retry = false; 
 
       if (hls) hls.destroy();
-      if (youtubePlayer) youtubePlayer.destroy();
+      if (youtubePlayer) { youtubePlayer.destroy(); youtubePlayer = null; }
       
       const channel = CHANNELS[index];
       
@@ -171,9 +184,7 @@
       }
     }
 
-    // New function to handle the player's state changes
     function onPlayerStateChange(event) {
-      // YT.PlayerState.ENDED is 0. This means the video/stream is over.
       if (event.data === YT.PlayerState.ENDED && currentChannel === 0 && !usingFallback) {
         console.log("Main stream has ended. Switching to fallback.");
         useFallback();
@@ -182,7 +193,7 @@
 
     function useFallback() {
       usingFallback = true;
-      if (youtubePlayer) youtubePlayer.destroy();
+      if (youtubePlayer) { youtubePlayer.destroy(); youtubePlayer = null; }
       STREAM_DIV.innerHTML = '';
       const iframe = document.createElement('iframe');
       iframe.src = CHANNELS[0].fallback;
