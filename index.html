@@ -1,115 +1,44 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <title>Punjabi Stream</title>
-
   <link rel="icon" href="https://i.postimg.cc/FRDPFKpY/favicon-96x96.png" type="image/png">
-
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <script src="https://www.youtube.com/iframe_api"></script>
-
   <style>
     html, body {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      background-color: black;
-      font-family: sans-serif;
+      margin: 0; padding: 0; height: 100%;
+      background-color: black; font-family: sans-serif;
       overflow: hidden;
       -webkit-tap-highlight-color: transparent;
-      -webkit-touch-callout: none;
-      -webkit-user-select: none;
       user-select: none;
     }
-
-    #container {
-      position: relative;
-      width: 100vw;
-      height: 100vh;
-    }
-
-    #stream {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      border: none;
-      z-index: 0;
-    }
-    
-    #stream iframe {
-      width: 100%;
-      height: 100%;
-      border: none;
-    }
-
-    #hls-video {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      z-index: 1;
-      display: none;
-    }
-
+    #container { position: relative; width: 100vw; height: 100vh; }
+    #stream { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; z-index: 0; }
+    #stream iframe { width: 100%; height: 100%; border: none; }
+    #hls-video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; display: none; }
     #hls-video::-webkit-media-controls { display: none !important; }
-    #hls-video::-webkit-media-controls-panel { display: none !important; }
-    #hls-video::-webkit-media-controls-play-button { display: none !important; }
-    #hls-video::-webkit-media-controls-start-playback-button { display: none !important; }
-
-    #overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 2;
-      cursor: pointer;
-    }
-
+    #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; cursor: pointer; }
     #channelName {
-      position: absolute;
-      bottom: -60px;
-      left: 0;
+      position: absolute; bottom: -60px; left: 0;
       width: 100%;
-      background: rgba(0,41,107,0.7);
-      color: #ffd500;
-      padding: 12px 20px;
-      font-size: 22px;
-      font-weight: bold;
-      text-align: center;
-      opacity: 0;
-      transition: all 0.6s ease;
-      z-index: 3;
+      background: rgba(0,41,107,0.7); color: #ffd500;
+      padding: 12px 20px; font-size: 22px; font-weight: bold;
+      text-align: center; opacity: 0;
+      transition: all 0.6s ease; z-index: 3;
     }
-
-    #channelName.show {
-      bottom: 0;
-      opacity: 1;
-    }
-    
+    #channelName.show { bottom: 0; opacity: 1; }
     .loading {
-      position: absolute;
-      top: 50%;
-      left: 50%;
+      position: absolute; top: 50%; left: 50%;
       transform: translate(-50%, -50%);
-      width: 50px;
-      height: 50px;
+      width: 50px; height: 50px;
       border: 5px solid rgba(255, 213, 0, 0.3);
-      border-radius: 50%;
-      border-top-color: #ffd500;
+      border-radius: 50%; border-top-color: #ffd500;
       animation: spin 1s ease-in-out infinite;
-      z-index: 4;
-      display: none;
+      z-index: 4; display: none;
     }
-    
-    @keyframes spin {
-      to { transform: translate(-50%, -50%) rotate(360deg); }
-    }
+    @keyframes spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
   </style>
 </head>
 <body>
@@ -123,103 +52,52 @@
 
   <script>
     const CHANNELS = [
-      { 
-        name: "1. Patna Sahib LIVE", 
-        url: "https://www.youtube.com/embed/live_stream?channel=UCrrrlDzu3AqIDPzzSXsViLQ",  
-        fallback: "https://www.youtube.com/embed/TxSC4pCmrYY?autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0",
-        type: "youtube" 
-      },
-      { 
-        name: "2. PTC News LIVE", 
-        url: "https://www.youtube.com/embed/live_stream?channel=UCQLEbraENUGWh6p1Rv664rQ&autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0", 
-        type: "youtube" 
-      }, 
-      { 
-        name: "3. Hazur Sahib LIVE", 
-        url: "https://www.youtube.com/embed/live_stream?channel=UCuerQ47I9Y2qxr4eIopxbYw&autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0", 
-        type: "youtube" 
-      },
-      { 
-        name: "4. Fatehgarh Sahib LIVE", 
-        url: "https://www.youtube.com/embed/live_stream?channel=UCudVHqnOekwcvpzNpY8_ERw&autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0", 
-        type: "youtube" 
-      },
-      { 
-        name: "5. Chardikla Time TV", 
-        url: "https://www.yupptv.com/yupptvnew/channels/chardikala-time-tv/live/embed", 
-        type: "iframe" 
-      },
-      { 
-        name: "6. DD Punjabi", 
-        url: "https://d3eyhgoylams0m.cloudfront.net/v1/manifest/93ce20f0f52760bf38be911ff4c91ed02aa2fd92/ed7bd2c7-8d10-4051-b397-2f6b90f99acb/20c8ad14-a158-4a42-8889-e032d070856e/2.m3u8", 
-        type: "hls" 
-      }
+      { name: "1. Patna Sahib LIVE", url: "https://www.youtube.com/embed/live_stream?channel=UCrrrlDzu3AqIDPzzSXsViLQ", fallback: "https://www.youtube.com/embed/TxSC4pCmrYY?autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0", type: "youtube" },
+      { name: "2. PTC News LIVE", url: "https://www.youtube.com/embed/live_stream?channel=UCQLEbraENUGWh6p1Rv664rQ&autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0", type: "youtube" },
+      { name: "3. Hazur Sahib LIVE", url: "https://www.youtube.com/embed/live_stream?channel=UCuerQ47I9Y2qxr4eIopxbYw&autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0", type: "youtube" },
+      { name: "4. Fatehgarh Sahib LIVE", url: "https://www.youtube.com/embed/live_stream?channel=UCudVHqnOekwcvpzNpY8_ERw&autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0", type: "youtube" },
+      { name: "5. Chardikla Time TV", url: "https://www.yupptv.com/yupptvnew/channels/chardikala-time-tv/live/embed", type: "iframe" },
+      { name: "6. DD Punjabi", url: "https://d3eyhgoylams0m.cloudfront.net/v1/manifest/93ce20f0f52760bf38be911ff4c91ed02aa2fd92/ed7bd2c7-8d10-4051-b397-2f6b90f99acb/20c8ad14-a158-4a42-8889-e032d070856e/2.m3u8", type: "hls" }
     ];
 
     const storage = {
-      setItem: (key, value) => {
-        try {
-          localStorage.setItem(key, value);
-        } catch (e) {
-          console.log("LocalStorage not available, using fallback");
-          document.cookie = `${key}=${value}; max-age=31536000; path=/`;
-        }
-      },
+      setItem: (key, value) => { try { localStorage.setItem(key, value); } catch (e) { document.cookie = `${key}=${value}; max-age=31536000; path=/`; } },
       getItem: (key) => {
-        try {
-          return localStorage.getItem(key);
-        } catch (e) {
-          console.log("LocalStorage not available, using fallback");
-          const name = key + "=";
-          const decodedCookie = decodeURIComponent(document.cookie);
-          const ca = decodedCookie.split(';');
-          for(let i = 0; i < ca.length; i++) {
-            let c = ca[i];
-            while (c.charAt(0) === ' ') c = c.substring(1);
-            if (c.indexOf(name) === 0) return c.substring(name.length, c.length);
-          }
+        try { return localStorage.getItem(key); } catch (e) {
+          const name = key + "="; const ca = decodeURIComponent(document.cookie).split(';');
+          for(let c of ca) { c = c.trim(); if (c.indexOf(name) === 0) return c.substring(name.length); }
           return null;
         }
       }
     };
 
-    let currentChannel = 0;
-    try {
-      const savedChannel = storage.getItem('currentChannel');
-      if (savedChannel !== null && !isNaN(savedChannel)) {
-        currentChannel = parseInt(savedChannel);
-        if (currentChannel < 0 || currentChannel >= CHANNELS.length) {
-          currentChannel = 0;
-        }
-      }
-    } catch (e) {
-      console.log("Error loading saved channel, defaulting to 0");
-      currentChannel = 0;
-    }
-    
+    let currentChannel = parseInt(storage.getItem('currentChannel')) || 0;
+    if (currentChannel < 0 || currentChannel >= CHANNELS.length) currentChannel = 0;
+
     const STREAM_DIV = document.getElementById('stream');
     const HLS_VIDEO = document.getElementById('hls-video');
     const channelNameBox = document.getElementById('channelName');
     const loadingIndicator = document.getElementById('loading');
-    let hideTimeout;
-    let hls = null;
-    let refreshTimer = null;
-    let usingFallback = false;
-    let youtubePlayer = null;
+    let hideTimeout, hls, refreshTimer, youtubePlayer;
+    let usingFallback = false, channel1Retry = false;
 
     HLS_VIDEO.controls = false;
-    HLS_VIDEO.addEventListener('contextmenu', e => e.preventDefault(), false);
+    HLS_VIDEO.addEventListener('contextmenu', e => e.preventDefault());
 
-    function onYouTubeIframeAPIReady() {
-      console.log("YouTube API ready");
-      loadChannel(currentChannel);
-    }
+    function onYouTubeIframeAPIReady() { loadChannel(currentChannel); }
 
-    function getChannelIdFromUrl(url) {
-      try {
-        const urlObj = new URL(url);
-        return urlObj.searchParams.get("channel");
-      } catch (e) { return null; }
+    function getChannelIdFromUrl(url) { try { return new URL(url).searchParams.get("channel"); } catch (e) { return null; } }
+    
+    function createYTPlayerForChannel1() {
+      if (youtubePlayer) youtubePlayer.destroy();
+      const channelId = getChannelIdFromUrl(CHANNELS[0].url);
+      if (channelId) {
+        youtubePlayer = new YT.Player('stream', {
+          height: '100%', width: '100%',
+          playerVars: { 'autoplay': 1, 'controls': 0, 'rel': 0, 'showinfo': 0, 'modestbranding': 1, 'playlist': 'live_stream', 'channel': channelId },
+          events: { 'onReady': onPlayerReady, 'onError': onPlayerError }
+        });
+      }
     }
 
     function loadChannel(index) {
@@ -230,38 +108,18 @@
       HLS_VIDEO.style.display = 'none';
       HLS_VIDEO.pause();
       STREAM_DIV.innerHTML = '';
-      usingFallback = false;
+      
+      usingFallback = false; channel1Retry = false; 
 
-      if (hls) { hls.destroy(); hls = null; }
-      if (youtubePlayer) { youtubePlayer.destroy(); youtubePlayer = null; }
+      if (hls) hls.destroy();
+      if (youtubePlayer) youtubePlayer.destroy();
       
       const channel = CHANNELS[index];
       
-      if (channel.type === 'youtube') {
+      if (channel.type === 'youtube' && index === 0 && channel.fallback) {
         STREAM_DIV.style.display = 'block';
-        // Use API for Channel 1 to enable fallback, use simple iframe for others
-        if (index === 0 && channel.fallback) {
-          const channelId = getChannelIdFromUrl(channel.url);
-          if (channelId) {
-            youtubePlayer = new YT.Player('stream', {
-              height: '100%', width: '100%',
-              playerVars: {
-                'autoplay': 1, 'controls': 0, 'rel': 0, 'showinfo': 0, 
-                'modestbranding': 1, 'playlist': 'live_stream', 'channel': channelId
-              },
-              events: { 'onReady': onPlayerReady, 'onError': onPlayerError }
-            });
-          }
-        } else {
-          // For other YouTube channels, a simple iframe is more reliable
-          const iframe = document.createElement('iframe');
-          iframe.src = channel.url;
-          iframe.setAttribute('allow', 'autoplay; fullscreen');
-          iframe.setAttribute('allowfullscreen', '');
-          iframe.onload = () => loadingIndicator.style.display = 'none';
-          STREAM_DIV.appendChild(iframe);
-        }
-      } else if (channel.type === 'iframe') {
+        createYTPlayerForChannel1();
+      } else if (channel.type === 'youtube' || channel.type === 'iframe') {
         STREAM_DIV.style.display = 'block';
         const iframe = document.createElement('iframe');
         iframe.src = channel.url;
@@ -273,28 +131,15 @@
         HLS_VIDEO.style.display = 'block';
         if (HLS_VIDEO.canPlayType('application/vnd.apple.mpegurl')) {
           HLS_VIDEO.src = channel.url;
-          HLS_VIDEO.addEventListener('loadedmetadata', () => {
-            HLS_VIDEO.play().catch(e => console.log("Autoplay prevented"));
-            loadingIndicator.style.display = 'none';
-          });
-          HLS_VIDEO.addEventListener('error', () => {
-            console.log("HLS native video error");
-            loadingIndicator.style.display = 'none';
-          });
+          HLS_VIDEO.addEventListener('loadedmetadata', () => { HLS_VIDEO.play(); loadingIndicator.style.display = 'none'; });
+          HLS_VIDEO.addEventListener('error', () => { loadingIndicator.style.display = 'none'; });
         } else if (Hls.isSupported()) {
           hls = new Hls();
           hls.loadSource(channel.url);
           hls.attachMedia(HLS_VIDEO);
-          hls.on(Hls.Events.MANIFEST_PARSED, () => {
-            HLS_VIDEO.play().catch(e => console.log("Autoplay prevented"));
-            loadingIndicator.style.display = 'none';
-          });
-          hls.on(Hls.Events.ERROR, (event, data) => {
-            console.log("HLS.js error:", data);
-            loadingIndicator.style.display = 'none';
-          });
+          hls.on(Hls.Events.MANIFEST_PARSED, () => { HLS_VIDEO.play(); loadingIndicator.style.display = 'none'; });
+          hls.on(Hls.Events.ERROR, () => { loadingIndicator.style.display = 'none'; });
         } else {
-          console.log("HLS not supported");
           loadingIndicator.style.display = 'none';
         }
       } else {
@@ -310,23 +155,25 @@
       event.target.playVideo();
     }
 
-    function onPlayerError(event) {
-      console.log("YouTube Player Error:", event.data);
-      loadingIndicator.style.display = 'none';
-      if (currentChannel === 0 && CHANNELS[0].fallback && !usingFallback) {
+    function onPlayerError() {
+      if (currentChannel !== 0 || usingFallback) return;
+      if (!channel1Retry) {
+        channel1Retry = true;
+        console.log("Stream error, attempting one retry...");
+        setTimeout(createYTPlayerForChannel1, 1000);
+      } else {
+        console.log("Retry failed. Switching to fallback.");
         useFallback();
       }
     }
 
     function useFallback() {
-      console.log("Primary stream failed. Using fallback.");
       usingFallback = true;
-      if (youtubePlayer) { youtubePlayer.destroy(); youtubePlayer = null; }
+      if (youtubePlayer) youtubePlayer.destroy();
       STREAM_DIV.innerHTML = '';
       const iframe = document.createElement('iframe');
       iframe.src = CHANNELS[0].fallback;
       iframe.setAttribute('allow', 'autoplay; fullscreen');
-      iframe.setAttribute('allowfullscreen', '');
       iframe.onload = () => loadingIndicator.style.display = 'none';
       STREAM_DIV.appendChild(iframe);
       showChannelName(CHANNELS[0].name);
@@ -336,46 +183,25 @@
       channelNameBox.textContent = name;
       channelNameBox.classList.add("show");
       clearTimeout(hideTimeout);
-      hideTimeout = setTimeout(() => {
-        channelNameBox.classList.remove("show");
-      }, 3000);
+      hideTimeout = setTimeout(() => channelNameBox.classList.remove("show"), 3000);
     }
 
     function setupAutoRefresh() {
-      if (refreshTimer) clearTimeout(refreshTimer);
-      refreshTimer = setTimeout(() => {
-        storage.setItem('currentChannel', currentChannel);
-        window.location.reload();
-      }, 3600000); // 60 minutes
+      clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(() => window.location.reload(), 3600000);
     }
 
-    document.getElementById('overlay').addEventListener('click', () => nextChannel());
+    function nextChannel() { currentChannel = (currentChannel + 1) % CHANNELS.length; loadChannel(currentChannel); }
+    function prevChannel() { currentChannel = (currentChannel - 1 + CHANNELS.length) % CHANNELS.length; loadChannel(currentChannel); }
+    function jumpToChannel(index) { currentChannel = index; loadChannel(currentChannel); }
 
+    document.getElementById('overlay').addEventListener('click', nextChannel);
     document.addEventListener('keydown', (e) => {
       if (e.key === "ArrowRight" || e.key.toLowerCase() === "d") nextChannel();
       else if (e.key === "ArrowLeft" || e.key.toLowerCase() === "a") prevChannel();
       else if (/^[1-6]$/.test(e.key)) jumpToChannel(parseInt(e.key) - 1);
     });
-
-    function nextChannel() {
-      currentChannel = (currentChannel + 1) % CHANNELS.length;
-      loadChannel(currentChannel);
-    }
-
-    function prevChannel() {
-      currentChannel = (currentChannel - 1 + CHANNELS.length) % CHANNELS.length;
-      loadChannel(currentChannel);
-    }
-
-    function jumpToChannel(index) {
-      currentChannel = index;
-      loadChannel(currentChannel);
-    }
-
-    document.body.addEventListener('click', () => document.body.focus());
-    document.addEventListener('keydown', (e) => {
-      if (e.keyCode === 8 || e.keyCode === 461) e.preventDefault();
-    });
+    document.addEventListener('keydown', (e) => { if (e.keyCode === 8 || e.keyCode === 461) e.preventDefault(); });
   </script>
 </body>
 </html>
