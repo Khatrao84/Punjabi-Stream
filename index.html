@@ -213,7 +213,7 @@
 
     function setupAutoRefresh() {
       clearTimeout(refreshTimer);
-      refreshTimer = setTimeout(() => window.location.reload(), 3600000);
+      refreshTimer = setTimeout(() => window.location.reload(), 5400000);
     }
 
     function nextChannel() { currentChannel = (currentChannel + 1) % CHANNELS.length; loadChannel(currentChannel); }
