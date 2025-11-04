@@ -172,17 +172,52 @@
       else if (/^[1-7]$/.test(e.key)) jumpToChannel(parseInt(e.key) - 1);
     });
 
-    function updateTime() {
-      const now = new Date();
-      const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      const dateStr = now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
-      document.querySelector('#time-tv .clock').textContent = timeStr;
-      document.querySelector('#time-tv .date').textContent = dateStr;
-    }
-    setInterval(updateTime, 1000);
-    updateTime();
+    // --- Internet-synced 12-hour Time TV logic ---
+let currentTime = new Date();
+
+async function fetchInternetTime() {
+  try {
+    // Get Indian Standard Time from the internet
+    const response = await fetch("https://worldtimeapi.org/api/timezone/Asia/Kolkata");
+    const data = await response.json();
+    currentTime = new Date(data.datetime);
+    console.log("✅ Internet time synced:", currentTime.toString());
+  } catch (e) {
+    console.warn("⚠️ Using local device time (no internet).");
+    currentTime = new Date();
+  }
+}
+
+function updateTime() {
+  // Advance the clock smoothly by 1 second
+  currentTime.setSeconds(currentTime.getSeconds() + 1);
+
+  // Format in 12-hour time with AM/PM
+  const timeStr = currentTime.toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+
+  const dateStr = currentTime.toLocaleDateString([], {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric'
+  });
+
+  document.querySelector('#time-tv .clock').textContent = timeStr;
+  document.querySelector('#time-tv .date').textContent = dateStr;
+}
+
+// Fetch internet time when page loads, then start ticking
+fetchInternetTime().then(() => {
+  updateTime();
+  setInterval(updateTime, 1000);
+});
 
     loadChannel(currentChannel);
   </script>
 </body>
 </html>
+
