@@ -1,4 +1,4 @@
-      <!DOCTYPE html>
+   <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -77,7 +77,7 @@
     <!-- Time TV (Channel 7) -->
     <div id="time-tv">
       <div class="clock">00:00</div>
-      <div class="date">4 November, 2025</div>
+      <div class="date">November 4, 2025</div>
     </div>
 
     <div id="overlay"></div>
@@ -202,8 +202,8 @@ function updateTime() {
 
   const dateStr = internetTime.toLocaleDateString([], {
     weekday: 'long',
-    day: 'numeric'
-    month: 'short',
+    month: 'long',
+    day: 'numeric',
     year: 'numeric'
   });
 
@@ -223,6 +223,4 @@ loadChannel(currentChannel);
 
   </script>
 </body>
-</html>
-
-
+</html>       
