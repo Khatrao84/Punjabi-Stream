@@ -63,7 +63,7 @@
 #time-tv .date {
   position: absolute;
   top: 4%; /* moved slightly lower */
-  right: 7%;
+  right: 8%;
   font-size: 2.0vw; /* made a bit smaller */
 }
 
@@ -202,8 +202,8 @@ function updateTime() {
 
   const dateStr = internetTime.toLocaleDateString([], {
     weekday: 'long',
-    month: 'long',
-    day: 'numeric',
+    day: 'numeric'
+    month: 'short',
     year: 'numeric'
   });
 
@@ -224,4 +224,5 @@ loadChannel(currentChannel);
   </script>
 </body>
 </html>
+
 
