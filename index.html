@@ -176,53 +176,13 @@
       else if (/^[1-7]$/.test(e.key)) jumpToChannel(parseInt(e.key) - 1);
     });
 
- // Update time display using local system time
-function updateTime() {
-  const now = new Date();
-  
-  // Format time (HH:MM:SS)
-  const hours = String(now.getHours()).padStart(2, '0');
-  const minutes = String(now.getMinutes()).padStart(2, '0');
-  const seconds = String(now.getSeconds()).padStart(2, '0');
-  const timeStr = `${hours}:${minutes}:${seconds}`;
-  
-  // Format date
-  const options = { 
-    weekday: 'long', 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
-  };
-  const dateStr = now.toLocaleDateString('en-IN', options);
-  
-  // Update DOM elements
-  const clockElement = document.querySelector('#time-tv .clock');
-  const dateElement = document.querySelector('#time-tv .date');
-  
-  if (clockElement) clockElement.textContent = timeStr;
-  if (dateElement) dateElement.textContent = dateStr;
+ } else if (channel.type === 'time') {
+  TIME_TV.style.display = 'block';
+  loadingIndicator.style.display = 'none';
 }
-
-// Start clock with local system time
-updateTime();
-setInterval(updateTime, 1000);
 
 loadChannel(currentChannel);
 
   </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
