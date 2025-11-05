@@ -63,7 +63,7 @@
 #time-tv .date {
   position: absolute;
   top: 4%; /* moved slightly lower */
-  right: 8%;
+  right: 7%;
   font-size: 2.0vw; /* made a bit smaller */
 }
 
@@ -176,54 +176,43 @@
       else if (/^[1-7]$/.test(e.key)) jumpToChannel(parseInt(e.key) - 1);
     });
 
- let internetTime = null;
-
-// Fetch accurate internet time (Asia/Kolkata)
-async function fetchInternetTime() {
-  try {
-    const response = await fetch('https://worldtimeapi.org/api/timezone/Asia/Kolkata');
-    const data = await response.json();
-    internetTime = new Date(data.datetime);
-  } catch (error) {
-    console.error("⚠️ Failed to fetch internet time — using system time temporarily.");
-    internetTime = new Date();
-  }
-}
-
-// Update time display (based on internet time)
+ // Update time display using local system time
 function updateTime() {
-  if (!internetTime) return;
-  internetTime.setSeconds(internetTime.getSeconds() + 1); // advance by one second
-
-  const timeStr = internetTime.toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  });
-
-  const dateStr = internetTime.toLocaleDateString([], {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric'
-  });
-
-  document.querySelector('#time-tv .clock').textContent = timeStr;
-  document.querySelector('#time-tv .date').textContent = dateStr;
+  const now = new Date();
+  
+  // Format time (HH:MM:SS)
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+  const timeStr = `${hours}:${minutes}:${seconds}`;
+  
+  // Format date
+  const options = { 
+    weekday: 'long', 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  };
+  const dateStr = now.toLocaleDateString('en-IN', options);
+  
+  // Update DOM elements
+  const clockElement = document.querySelector('#time-tv .clock');
+  const dateElement = document.querySelector('#time-tv .date');
+  
+  if (clockElement) clockElement.textContent = timeStr;
+  if (dateElement) dateElement.textContent = dateStr;
 }
 
-// Start clock with internet sync
-(async () => {
-  await fetchInternetTime();
-  updateTime();
-  setInterval(updateTime, 1000);
-})();
+// Start clock with local system time
+updateTime();
+setInterval(updateTime, 1000);
 
 loadChannel(currentChannel);
 
   </script>
 </body>
 </html>
+
 
 
 
