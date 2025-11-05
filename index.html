@@ -146,6 +146,8 @@
       } else if (channel.type === 'time') {
         TIME_TV.style.display = 'block';
         loadingIndicator.style.display = 'none';
+        // Force time resync when switching to time channel
+fetchInternetTime();
       }
 
       showChannelName(channel.name);
@@ -264,6 +266,7 @@ loadChannel(currentChannel);
   </script>
 </body>
 </html>
+
 
 
 
