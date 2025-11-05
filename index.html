@@ -188,11 +188,27 @@ async function fetchInternetTime() {
   }
 }
 
+// --- Internet-synced Time TV (IST, 12-hour with seconds) ---
+let currentTime = new Date();
+const clockEl = document.querySelector('#time-tv .clock');
+const dateEl = document.querySelector('#time-tv .date');
+
+// Fetch Internet Time (only once at page refresh)
+async function fetchInternetTime() {
+  try {
+    const response = await fetch("https://worldtimeapi.org/api/timezone/Asia/Kolkata");
+    const data = await response.json();
+    currentTime = new Date(data.datetime);
+    console.log("✅ Internet time synced:", currentTime.toString());
+  } catch (e) {
+    console.warn("⚠️ Using previous time (no internet).");
+  }
+}
+
+// Update Time Locally Every Second
 function updateTime() {
-  // Advance the clock smoothly by 1 second
   currentTime.setSeconds(currentTime.getSeconds() + 1);
 
-  // Format in 12-hour time with AM/PM
   const timeStr = currentTime.toLocaleTimeString([], {
     hour: '2-digit',
     minute: '2-digit',
@@ -207,19 +223,21 @@ function updateTime() {
     year: 'numeric'
   });
 
-  document.querySelector('#time-tv .clock').textContent = timeStr;
-  document.querySelector('#time-tv .date').textContent = dateStr;
+  clockEl.textContent = timeStr;
+  dateEl.textContent = dateStr;
 }
 
-// Fetch internet time when page loads, then start ticking
+// Run once on load → sync time → then start ticking
 fetchInternetTime().then(() => {
-  updateTime();
-  setInterval(updateTime, 1000);
+  updateTime(); // initial update
+  setInterval(updateTime, 1000); // update every second
 });
+
 
     loadChannel(currentChannel);
   </script>
 </body>
 </html>
+
 
 
