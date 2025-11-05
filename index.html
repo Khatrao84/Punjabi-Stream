@@ -180,9 +180,46 @@
   TIME_TV.style.display = 'block';
   loadingIndicator.style.display = 'none';
 }
+// Update time display using local system time (12-hour format)
+function updateTime() {
+  const now = new Date();
+  
+  // Format time in 12-hour format (HH:MM:SS AM/PM)
+  let hours = now.getHours();
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  
+  // Convert to 12-hour format
+  hours = hours % 12;
+  hours = hours ? hours : 12; // 0 should be 12
+  hours = String(hours).padStart(2, '0');
+  
+  const timeStr = `${hours}:${minutes}:${seconds} ${ampm}`;
+  
+  // Format date
+  const options = { 
+    weekday: 'long', 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  };
+  const dateStr = now.toLocaleDateString('en-IN', options);
+  
+  // Update DOM elements
+  const clockElement = document.querySelector('#time-tv .clock');
+  const dateElement = document.querySelector('#time-tv .date');
+  
+  if (clockElement) clockElement.textContent = timeStr;
+  if (dateElement) dateElement.textContent = dateStr;
+}
 
+// Start clock with local system time
+updateTime();
+setInterval(updateTime, 1000);
 loadChannel(currentChannel);
 
   </script>
 </body>
 </html>
+
