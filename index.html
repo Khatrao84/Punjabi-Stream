@@ -175,7 +175,7 @@
       else if (/^[1-7]$/.test(e.key)) jumpToChannel(parseInt(e.key) - 1);
     });
 
-   let internetTime = null;
+ let internetTime = null;
 
 // Fetch accurate internet time (Asia/Kolkata)
 async function fetchInternetTime() {
@@ -189,21 +189,42 @@ async function fetchInternetTime() {
   }
 }
 
+// Update time display (based on internet time)
 function updateTime() {
-  const now = new Date();
-  const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  const dateStr = now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  if (!internetTime) return;
+  internetTime.setSeconds(internetTime.getSeconds() + 1); // advance by one second
+
+  const timeStr = internetTime.toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
+
+  const dateStr = internetTime.toLocaleDateString([], {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric'
+  });
+
   document.querySelector('#time-tv .clock').textContent = timeStr;
   document.querySelector('#time-tv .date').textContent = dateStr;
 }
-setInterval(updateTime, 1000);
-updateTime();
+
+// Start clock with internet sync
+(async () => {
+  await fetchInternetTime();
+  updateTime();
+  setInterval(updateTime, 1000);
+})();
+
 
 loadChannel(currentChannel);
 
   </script>
 </body>
 </html>
+
 
 
 
