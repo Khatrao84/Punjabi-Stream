@@ -50,7 +50,6 @@
       z-index: 1;
       background: url("https://i.postimg.cc/053WPD28/haarimandr.png") no-repeat center center;
       background-size: cover;
-      color: #FFFFFF; /* golden */
       font-family: "Arial Black", sans-serif;
     }
    #time-tv .clock {
@@ -142,7 +141,7 @@ function loadChannel(index) {
           if (iframe.src === channel.url && !channel1Retry) {
             channel1Retry = true;
             iframe.src = channel.fallback;
-            showChannelName(channel.name + " (Fallback)");
+            showChannelName(channel.name);
           }
         }, 5000);
       };
