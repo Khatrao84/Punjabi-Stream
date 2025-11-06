@@ -53,18 +53,51 @@
       color: #FFFFFF; /* golden */
       font-family: "Arial Black", sans-serif;
     }
-    #time-tv .clock {
+   #time-tv .clock {
   position: absolute;
   top: 6%; 
   right: 5%;
   font-size: 6vw;
+  color: #FFD700; /* bright golden */
+  text-shadow:
+    0 0 10px #FFD700,
+    0 0 20px #FFD700,
+    0 0 40px #FFD700,
+    0 0 80px #FFD700;
+  animation: glowPulse 3s ease-in-out infinite;
 }
 
 #time-tv .date {
   position: absolute;
-  top: 4%; /* moved slightly lower */
+  top: 4%;
   right: 9%;
-  font-size: 2.0vw; /* made a bit smaller */
+  font-size: 2vw;
+  color: #FFE066;
+  text-shadow:
+    0 0 5px #FFD700,
+    0 0 10px #FFD700,
+    0 0 20px #FFD700;
+  animation: glowPulse 3s ease-in-out infinite;
+}
+
+/* ✨ Soft pulsing animation */
+@keyframes glowPulse {
+  0%, 100% {
+    text-shadow:
+      0 0 10px #FFD700,
+      0 0 20px #FFD700,
+      0 0 40px #FFD700,
+      0 0 80px #FFD700;
+    opacity: 1;
+  }
+  50% {
+    text-shadow:
+      0 0 5px #FFC300,
+      0 0 10px #FFC300,
+      0 0 20px #FFC300,
+      0 0 40px #FFC300;
+    opacity: 0.8;
+  }
 }
 
   </style>
