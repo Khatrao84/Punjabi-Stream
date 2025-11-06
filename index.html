@@ -282,7 +282,7 @@ function tryActivateFallback() {
   
   loadingIndicator.style.display = 'block';
   const channel = CHANNELS[0];
-  showChannelName(channel.name + " (Fallback)");
+  showChannelName(channel.name);
   
   STREAM_DIV.innerHTML = '';
   loadChannel1WithFallback(channel);
