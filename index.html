@@ -131,34 +131,32 @@ function loadChannel(index) {
   const channel = CHANNELS[index];
 
   if (channel.type === 'youtube') {
-    STREAM_DIV.style.display = 'block';
-    const iframe = document.createElement('iframe');
-    if (index === 0 && !usingFallback) {
-      iframe.src = channel.url;
-      iframe.onload = () => {
-        loadingIndicator.style.display = 'none';
-        setTimeout(() => {
-          if (iframe.src === channel.url && !channel1Retry) {
-            channel1Retry = true;
-            iframe.src = channel.fallback;
-            showChannelName(channel.name);
-          }
-        }, 5000);
-      };
-      iframe.onerror = () => {
-        if (!usingFallback && channel.fallback) {
-          usingFallback = true;
-          iframe.src = channel.fallback;
-          showChannelName(channel.name + " (Fallback)");
-        }
-      };
-    } else {
-      iframe.src = usingFallback && channel.fallback ? channel.fallback : channel.url;
-      iframe.onload = () => loadingIndicator.style.display = 'none';
-    }
-    iframe.setAttribute('allow', 'autoplay; encrypted-media; fullscreen');
-    STREAM_DIV.appendChild(iframe);
-
+  STREAM_DIV.style.display = 'block';
+  const iframe = document.createElement('iframe');
+  
+  if (index === 0) {
+    // For channel 1, try main URL first, then fallback on error
+    iframe.src = channel.url;
+    iframe.onload = () => {
+      loadingIndicator.style.display = 'none';
+      // Channel loaded successfully, no need for fallback
+    };
+    iframe.onerror = () => {
+      if (!usingFallback && channel.fallback) {
+        usingFallback = true;
+        iframe.src = channel.fallback;
+        showChannelName(channel.name);
+      }
+    };
+  } else {
+    // For other YouTube channels
+    iframe.src = channel.url;
+    iframe.onload = () => loadingIndicator.style.display = 'none';
+  }
+  
+  iframe.setAttribute('allow', 'autoplay; encrypted-media; fullscreen');
+  STREAM_DIV.appendChild(iframe);
+}
   } else if (channel.type === 'iframe') {
     STREAM_DIV.style.display = 'block';
     const iframe = document.createElement('iframe');
