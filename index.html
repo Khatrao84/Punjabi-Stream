@@ -60,11 +60,7 @@
   font-size: 6vw;
   color: #FFD700; /* bright golden */
   text-shadow:
-    0 0 10px #FFD700,
-    0 0 20px #FFD700,
-    0 0 40px #FFD700,
-    0 0 80px #FFD700;
-  animation: glowPulse 3s ease-in-out infinite;
+    0 0 10px #FFD700;
 }
 
 #time-tv .date {
@@ -73,33 +69,8 @@
   right: 9%;
   font-size: 2vw;
   color: #FFE066;
-  text-shadow:
-    0 0 5px #FFD700,
-    0 0 10px #FFD700,
-    0 0 20px #FFD700;
-  animation: glowPulse 3s ease-in-out infinite;
 }
-
-/* ✨ Soft pulsing animation */
-@keyframes glowPulse {
-  0%, 100% {
-    text-shadow:
-      0 0 10px #FFD700,
-      0 0 20px #FFD700,
-      0 0 40px #FFD700,
-      0 0 80px #FFD700;
-    opacity: 1;
-  }
-  50% {
-    text-shadow:
-      0 0 5px #FFC300,
-      0 0 10px #FFC300,
-      0 0 20px #FFC300,
-      0 0 40px #FFC300;
-    opacity: 0.8;
-  }
-}
-
+    
   </style>
 </head>
 <body>
