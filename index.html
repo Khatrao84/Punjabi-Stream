@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
-  <title>Punjabi Stream (CH 0-9)</title>
+  <title>Punjabi Stream (ordered 1..9 then 0)</title>
   <link rel="icon" href="https://i.postimg.cc/FRDPFKpY/favicon-96x96.png" type="image/png">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Gurmukhi:wght@400;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
@@ -69,124 +69,114 @@
 
 <script>
 
+
 const CHANNELS = [
-
-  
-
-  /* CH 1 */
+  /* index 0 -> CH 1 */
   { name:"1. ਪਟਨਾ ਸਾਹਿਬ ਲਾਈਵ",
     url:"https://www.youtube.com/embed/live_stream?channel=UC3nqw1kd4AK1q9e68YUoLDQ&autoplay=1&mute=0&modestbranding=1&controls=0&showinfo=0&rel=0",
     type:"youtube"
   },
 
-  /* CH 2 */
+  /* index 1 -> CH 2 */
   { name:"2. ਅੰਮ੍ਰਿਤਸਰ ਸਾਹਿਬ ਲਾਈਵ",
     url:"https://www.youtube.com/embed/live_stream?channel=UCYn6UEtQ771a_OWSiNBoG8w&autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0",
     type:"youtube"
   },
 
-  /* CH 3 */
-  { name:"3. ਗੁਰਦੁਆਰਾ ਸ਼ਹੀਦ ਗੰਜ ਬਾਬਾ ਦੀਪ ਸਿੰਘ ਜੀ ਅੰਮ੍ਰਿਤਸਰ ਲਾਈਵ",
+  /* index 2 -> CH 3 (your new channel) */
+  { name:"3. ਸ਼ਹੀਦ ਬਾਬਾ ਦੀਪ ਸਿੰਘ ਜੀ ਅੰਮ੍ਰਿਤਸਰ ਸਾਹਿਬ ਲਾਈਵ",
     url:"https://www.youtube.com/embed/live_stream?channel=UCxWx-MPft_7mKrFtN6uOaAA&autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0",
     type:"youtube"
   },
 
-  /* CH 4 */
+  /* index 3 -> CH 4 */
   { name:"4. ਚੜਦੀਕਲਾ ਟਾਈਮ ਟੀਵੀ",
     url:"https://www.yupptv.com/yupptvnew/channels/chardikala-time-tv/live/embed",
     type:"iframe"
   },
 
-  /* CH 5 */
+  /* index 4 -> CH 5 */
   { name:"5. ਡੀਡੀ ਪੰਜਾਬੀ",
     url:"https://d3eyhgoylams0m.cloudfront.net/v1/manifest/93ce20f0f52760bf38be911ff4c91ed02aa2fd92/ed7bd2c7-8d10-4051-b397-2f6b90f99acb/20c8ad14-a158-4a42-8889-e032d070856e/2.m3u8",
     type:"hls"
   },
 
-  /* CH 6 */
+  /* index 5 -> CH 6 */
   { name:"6. ਫਤੇਹਗੜ੍ਹ ਸਾਹਿਬ ਲਾਈਵ",
     url:"https://www.youtube.com/embed/live_stream?channel=UCudVHqnOekwcvpzNpY8_ERw&autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0",
     type:"youtube"
   },
 
-  /* CH 7  */
+  /* index 6 -> CH 7 (your updated channel) */
   { name:"7. ਰਕਾਬ ਗੰਜ ਸਾਹਿਬ ਦਿੱਲੀ ਲਾਈਵ",
     url:"https://www.youtube.com/embed/live_stream?channel=UCdVa_kCUacFgWv7Xy-8zONA&autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0",
     type:"youtube"
   },
 
-  /* CH 8 */
+  /* index 7 -> CH 8 (time screen) */
   { name:"8. ਲਾਈਵ ਟਾਈਮ", type:"time" },
 
-  /* CH 9 */
+  /* index 8 -> CH 9 */
   { name:"9. ਹਜ਼ੂਰ ਸਾਹਿਬ ਲਾਈਵ",
     url:"https://www.youtube.com/embed/live_stream?channel=UCuerQ47I9Y2qxr4eIopxbYw&autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0",
     type:"youtube"
   },
 
-/* CH 0 */
+  /* index 9 -> CH 0 (placed at the end) */
   { name:"0. ਪਟਨਾ ਸਾਹਿਬ 24x7",
     url:"https://www.youtube.com/embed/TTK7eNuI3M0?autoplay=1&mute=0&modestbranding=1&controls=0&showinfo=0&rel=0",
     type:"youtube"
   }
-
 ];
 
-/* -----------------------------------
-    Player Logic (unchanged)
------------------------------------ */
+/* UI refs */
+const STREAM_DIV = document.getElementById('stream');
+const HLS_VIDEO = document.getElementById('hls-video');
+const TIME_TV = document.getElementById('time-tv');
+const channelNameBox = document.getElementById('channelName');
+const loadingIndicator = document.getElementById('loading');
 
-const STREAM_DIV=document.getElementById("stream");
-const HLS_VIDEO=document.getElementById("hls-video");
-const TIME_TV=document.getElementById("time-tv");
-const channelNameBox=document.getElementById("channelName");
-const loadingIndicator=document.getElementById("loading");
+let currentChannel = parseInt(localStorage.getItem('currentChannel')) || 0;
+if (isNaN(currentChannel) || currentChannel < 0 || currentChannel >= CHANNELS.length) currentChannel = 0;
+let hideTimeout, hls, refreshTimer;
 
-let currentChannel=parseInt(localStorage.getItem("currentChannel"))||0;
-if(currentChannel<0||currentChannel>=CHANNELS.length) currentChannel=0;
-let hideTimeout,hls,refreshTimer;
-
+/* load channel by array index */
 function loadChannel(index){
-  localStorage.setItem("currentChannel",index);
-  currentChannel=index;
-  loadingIndicator.style.display="block";
-  STREAM_DIV.style.display="none";
-  HLS_VIDEO.style.display="none";
-  TIME_TV.style.display="none";
-  STREAM_DIV.innerHTML="";
-  if(hls){try{hls.destroy();}catch(e){} hls=null;}
+  localStorage.setItem('currentChannel', index);
+  currentChannel = index;
+  loadingIndicator.style.display = 'block';
+  STREAM_DIV.style.display = 'none';
+  HLS_VIDEO.style.display = 'none';
+  TIME_TV.style.display = 'none';
+  STREAM_DIV.innerHTML = '';
+  if (hls) { try { hls.destroy(); } catch(e) {} hls = null; }
   HLS_VIDEO.pause();
 
-  const ch=CHANNELS[index];
+  const ch = CHANNELS[index];
+  if (!ch) return;
 
-  if(ch.type==="youtube"||ch.type==="iframe"){
-    STREAM_DIV.style.display="block";
-    const iframe=document.createElement("iframe");
-    iframe.src=ch.url;
-    iframe.setAttribute("allow","autoplay; encrypted-media; fullscreen");
-    iframe.onload=()=>loadingIndicator.style.display="none";
+  if (ch.type === 'youtube' || ch.type === 'iframe') {
+    STREAM_DIV.style.display = 'block';
+    const iframe = document.createElement('iframe');
+    iframe.src = ch.url;
+    iframe.setAttribute('allow', 'autoplay; encrypted-media; fullscreen');
+    iframe.onload = () => loadingIndicator.style.display = 'none';
     STREAM_DIV.appendChild(iframe);
-  }
-  else if(ch.type==="hls"){
-    HLS_VIDEO.style.display="block";
-    if(HLS_VIDEO.canPlayType("application/vnd.apple.mpegurl")){
-      HLS_VIDEO.src=ch.url;
-      HLS_VIDEO.addEventListener("loadedmetadata",()=>{
-        HLS_VIDEO.play();loadingIndicator.style.display="none";
-      });
-    }
-    else if(Hls&&Hls.isSupported()){
-      hls=new Hls();
+
+  } else if (ch.type === 'hls') {
+    HLS_VIDEO.style.display = 'block';
+    if (HLS_VIDEO.canPlayType('application/vnd.apple.mpegurl')) {
+      HLS_VIDEO.src = ch.url;
+      HLS_VIDEO.addEventListener('loadedmetadata', () => { HLS_VIDEO.play(); loadingIndicator.style.display = 'none'; });
+    } else if (Hls && Hls.isSupported()) {
+      hls = new Hls();
       hls.loadSource(ch.url);
       hls.attachMedia(HLS_VIDEO);
-      hls.on(Hls.Events.MANIFEST_PARSED,()=>{
-        HLS_VIDEO.play();loadingIndicator.style.display="none";
-      });
+      hls.on(Hls.Events.MANIFEST_PARSED, () => { HLS_VIDEO.play(); loadingIndicator.style.display = 'none'; });
     }
-  }
-  else if(ch.type==="time"){
-    TIME_TV.style.display="block";
-    loadingIndicator.style.display="none";
+  } else if (ch.type === 'time') {
+    TIME_TV.style.display = 'block';
+    loadingIndicator.style.display = 'none';
   }
 
   showChannelName(ch.name);
@@ -194,54 +184,51 @@ function loadChannel(index){
 }
 
 function showChannelName(name){
-  channelNameBox.textContent=name;
-  channelNameBox.classList.add("show");
+  channelNameBox.textContent = name;
+  channelNameBox.classList.add('show');
   clearTimeout(hideTimeout);
-  hideTimeout=setTimeout(()=>channelNameBox.classList.remove("show"),3000);
+  hideTimeout = setTimeout(() => channelNameBox.classList.remove('show'), 3000);
 }
 
 function setupAutoRefresh(){
   clearTimeout(refreshTimer);
-  refreshTimer=setTimeout(()=>window.location.reload(),5400000);
+  refreshTimer = setTimeout(() => window.location.reload(), 5400000);
 }
 
-function nextChannel(){
-  currentChannel=(currentChannel+1)%CHANNELS.length;
-  loadChannel(currentChannel);
-}
-function prevChannel(){
-  currentChannel=(currentChannel-1+CHANNELS.length)%CHANNELS.length;
-  loadChannel(currentChannel);
-}
-function jumpToChannel(i){
-  if(i>=0 && i<CHANNELS.length) loadChannel(i);
+function nextChannel(){ currentChannel = (currentChannel + 1) % CHANNELS.length; loadChannel(currentChannel); }
+function prevChannel(){ currentChannel = (currentChannel - 1 + CHANNELS.length) % CHANNELS.length; loadChannel(currentChannel); }
+function jumpToChannelByKeyNum(keyNum) {
+  // keyNum is integer 0..9 coming from keyboard:
+  // keys 1..9 should map to indices 0..8 respectively
+  // key 0 should map to index 9 (the last item)
+  if (keyNum === 0) loadChannel(CHANNELS.length - 1);
+  else loadChannel(keyNum - 1);
 }
 
-document.getElementById("overlay").addEventListener("click",nextChannel);
+/* events */
+document.getElementById('overlay').addEventListener('click', nextChannel);
 
-document.addEventListener("keydown",e=>{
-  if(e.key==="ArrowRight"||e.key.toLowerCase()==="d") nextChannel();
-  else if(e.key==="ArrowLeft"||e.key.toLowerCase()==="a") prevChannel();
-  else if(/^[0-9]$/.test(e.key)) jumpToChannel(parseInt(e.key));
+document.addEventListener('keydown', (e) => {
+  const k = e.key;
+  if (k === 'ArrowRight' || k.toLowerCase() === 'd') nextChannel();
+  else if (k === 'ArrowLeft' || k.toLowerCase() === 'a') prevChannel();
+  else if (/^[0-9]$/.test(k)) jumpToChannelByKeyNum(parseInt(k, 10));
 });
 
+/* live clock */
 function updateLocalTime(){
-  const now=new Date();
-  const t=now.toLocaleTimeString([],{
-    hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:true
-  }).replace(/am|pm/,m=>m.toUpperCase());
-
-  const d=now.toLocaleDateString([],{
-    weekday:"long",month:"long",day:"numeric",year:"numeric"
-  });
-
-  document.querySelector("#time-tv .clock").textContent=t;
-  document.querySelector("#time-tv .date").textContent=d;
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }).replace(/am|pm/, m => m.toUpperCase());
+  const dateStr = now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  const clock = document.querySelector('#time-tv .clock');
+  const dateEl = document.querySelector('#time-tv .date');
+  if (clock) clock.textContent = timeStr;
+  if (dateEl) dateEl.textContent = dateStr;
 }
-
-setInterval(updateLocalTime,1000);
+setInterval(updateLocalTime, 1000);
 updateLocalTime();
 
+/* load initial */
 loadChannel(currentChannel);
 </script>
 
