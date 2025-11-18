@@ -134,6 +134,7 @@ let currentChannel = parseInt(localStorage.getItem('currentChannel')) || 0;
 if (currentChannel < 0 || currentChannel >= CHANNELS.length) currentChannel = 0;
 
 let hideTimeout, hls, refreshTimer;
+let loadTimeout; /* Added for fast channel switching */
 
 // --- Channel 1 (Patna Sahib) specific fallback variables ---
 let usingFallbackCh1 = false;
@@ -305,12 +306,38 @@ function setupAutoRefresh() {
   refreshTimer = setTimeout(() => window.location.reload(), 5400000);
 }
 
-function nextChannel() { currentChannel = (currentChannel + 1) % CHANNELS.length; loadChannel(currentChannel); }
-function prevChannel() { currentChannel = (currentChannel - 1 + CHANNELS.length) % CHANNELS.length; loadChannel(currentChannel); }
+/* Queue logic for Fast Channel Switching (Debounce)
+   - Updates UI immediately
+   - Delays video loading until user stops scrolling
+*/
+function queueChannelLoad(index) {
+  currentChannel = index;
+  localStorage.setItem('currentChannel', index); // Save user's intent immediately
+  showChannelName(CHANNELS[index].name); // Show text immediately
+
+  // Cancel any pending video load (prevents lag while scrolling)
+  if (loadTimeout) clearTimeout(loadTimeout);
+
+  // Wait 500ms after the last keypress before actually loading the video
+  loadTimeout = setTimeout(() => {
+    loadChannel(index);
+  }, 500);
+}
+
+function nextChannel() { 
+  const idx = (currentChannel + 1) % CHANNELS.length; 
+  queueChannelLoad(idx); 
+}
+
+function prevChannel() { 
+  const idx = (currentChannel - 1 + CHANNELS.length) % CHANNELS.length; 
+  queueChannelLoad(idx); 
+}
+
 function jumpToChannel(index) { 
   if (index < 0) index = 0;
   if (index >= CHANNELS.length) index = CHANNELS.length - 1;
-  currentChannel = index; loadChannel(currentChannel); 
+  queueChannelLoad(index); 
 }
 
 /* -----------------------------------------------------
@@ -331,20 +358,39 @@ function globalKeyHandler(e) {
   if (e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) return;
 
   const k = e.key;
+  const c = e.keyCode; // Needed for WebOS specific key codes
 
-  if (k === "ArrowRight" || k.toLowerCase() === "d") {
+  /* --- Channel Up / Next --- 
+     Supports: ArrowRight, D, ChannelUp (427), PageUp (33), ArrowUp (38) */
+  if (
+    k === "ArrowRight" || 
+    k.toLowerCase() === "d" || 
+    k === "ChannelUp" || c === 427 || 
+    k === "PageUp" || c === 33 || 
+    k === "ArrowUp" || c === 38
+  ) {
     e.preventDefault();
     nextChannel();
     try { OVERLAY.focus({preventScroll: true}); } catch (err) { OVERLAY.focus(); }
     return;
   }
-  if (k === "ArrowLeft" || k.toLowerCase() === "a") {
+
+  /* --- Channel Down / Prev ---
+     Supports: ArrowLeft, A, ChannelDown (428), PageDown (34), ArrowDown (40) */
+  if (
+    k === "ArrowLeft" || 
+    k.toLowerCase() === "a" ||
+    k === "ChannelDown" || c === 428 || 
+    k === "PageDown" || c === 34 || 
+    k === "ArrowDown" || c === 40
+  ) {
     e.preventDefault();
     prevChannel();
     try { OVERLAY.focus({preventScroll: true}); } catch (err) { OVERLAY.focus(); }
     return;
   }
 
+  /* --- Numeric Keys 1-9 --- */
   if (/^[1-9]$/.test(k)) {
     e.preventDefault();
     const idx = parseInt(k, 10) - 1;
@@ -352,6 +398,7 @@ function globalKeyHandler(e) {
     try { OVERLAY.focus({preventScroll: true}); } catch (err) { OVERLAY.focus(); }
     return;
   }
+  /* --- Key 0 --- */
   if (k === "0") {
     e.preventDefault();
     jumpToChannel(9);
@@ -360,8 +407,8 @@ function globalKeyHandler(e) {
   }
 }
 
+// Window listener catches all bubbling events, including from Overlay.
 window.addEventListener('keydown', globalKeyHandler);
-OVERLAY.addEventListener('keydown', globalKeyHandler);
 
 /* ------------------ TIME TV clock ------------------ */
 function updateLocalTime() {
