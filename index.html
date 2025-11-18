@@ -66,12 +66,14 @@
 
     #time-tv .clock {
       position: absolute; top: 6%; right: 5%;
-      font-size: 8vw; color: #FFD700;
+      font-size: 8vw; 
+      color: #FFD700;
       text-shadow: 0 0 10px #FFD700;
     }
     #time-tv .date {
       position: absolute; top: 4%; right: 9%;
-      font-size: 3vw; color: #FFE066;
+      font-size: 3vw; 
+      color: #FFE066;
     }
 
     /* small helpful focus style when overlay is focused (won't be visible usually) */
@@ -85,8 +87,8 @@
     <video id="hls-video" playsinline></video>
 
     <div id="time-tv">
-      <div class="clock">00:00</div>
-      <div class="date">November 4, 2025</div>
+      <div class="clock">00:00:00 AM</div>
+      <div class="date">Tuesday, November 4, 2025</div>
     </div>
 
     <div id="overlay" tabindex="0" aria-label="Stream overlay - click to change channel"></div>
@@ -423,7 +425,10 @@ window.addEventListener('keydown', globalKeyHandler);
 function updateLocalTime() {
   const now = new Date();
   document.querySelector('#time-tv .clock').textContent = now.toLocaleTimeString();
-  document.querySelector('#time-tv .date').textContent = now.toLocaleDateString();
+  
+  // Fixed: Use 'long' for month to show full name (e.g. "November") instead of number
+  const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+  document.querySelector('#time-tv .date').textContent = now.toLocaleDateString('en-US', options);
 }
 setInterval(updateLocalTime, 1000);
 updateLocalTime();
@@ -437,4 +442,3 @@ loadChannel(currentChannel);
 
 </body>
 </html>
-
