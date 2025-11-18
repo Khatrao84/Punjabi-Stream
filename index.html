@@ -134,7 +134,11 @@ let currentChannel = parseInt(localStorage.getItem('currentChannel')) || 0;
 if (currentChannel < 0 || currentChannel >= CHANNELS.length) currentChannel = 0;
 
 let hideTimeout, hls, refreshTimer;
-let loadTimeout; /* Added for fast channel switching */
+let loadTimeout; /* For delaying the video load */
+let lastScrollTime = 0; /* For slowing down the key presses */
+
+// 350ms = limits scrolling to roughly 3 channels per second
+const SCROLL_SPEED_MS = 350; 
 
 // --- Channel 1 (Patna Sahib) specific fallback variables ---
 let usingFallbackCh1 = false;
@@ -306,39 +310,48 @@ function setupAutoRefresh() {
   refreshTimer = setTimeout(() => window.location.reload(), 5400000);
 }
 
-/* Queue logic for Fast Channel Switching (Debounce)
-   - Updates UI immediately
-   - Delays video loading until user stops scrolling
-*/
+/* ------------------ Queue & Throttle Logic ------------------ */
+
+// This function handles the delayed loading (debounce)
+// It waits for the user to stop pressing buttons before loading video
 function queueChannelLoad(index) {
   currentChannel = index;
-  localStorage.setItem('currentChannel', index); // Save user's intent immediately
-  showChannelName(CHANNELS[index].name); // Show text immediately
+  localStorage.setItem('currentChannel', index);
+  showChannelName(CHANNELS[index].name); // Update text immediately
 
-  // Cancel any pending video load (prevents lag while scrolling)
   if (loadTimeout) clearTimeout(loadTimeout);
 
-  // Wait 500ms after the last keypress before actually loading the video
   loadTimeout = setTimeout(() => {
     loadChannel(index);
-  }, 500);
+  }, 600); // Wait 600ms after last input to load video
 }
 
 function nextChannel() { 
+  const now = Date.now();
+  // Throttle: If last press was less than 350ms ago, ignore this press
+  if (now - lastScrollTime < SCROLL_SPEED_MS) return; 
+  lastScrollTime = now;
+
   const idx = (currentChannel + 1) % CHANNELS.length; 
   queueChannelLoad(idx); 
 }
 
 function prevChannel() { 
+  const now = Date.now();
+  if (now - lastScrollTime < SCROLL_SPEED_MS) return;
+  lastScrollTime = now;
+
   const idx = (currentChannel - 1 + CHANNELS.length) % CHANNELS.length; 
   queueChannelLoad(idx); 
 }
 
+// jumpToChannel (numbers) is NOT throttled so you can type fast if needed
 function jumpToChannel(index) { 
   if (index < 0) index = 0;
   if (index >= CHANNELS.length) index = CHANNELS.length - 1;
   queueChannelLoad(index); 
 }
+
 
 /* -----------------------------------------------------
    Click + Keyboard handlers (robust)
@@ -358,13 +371,11 @@ function globalKeyHandler(e) {
   if (e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) return;
 
   const k = e.key;
-  const c = e.keyCode; // Needed for WebOS specific key codes
+  const c = e.keyCode;
 
-  /* --- Channel Up / Next --- 
-     Supports: ArrowRight, D, ChannelUp (427), PageUp (33), ArrowUp (38) */
+  /* --- Channel Up / Next --- */
   if (
-    k === "ArrowRight" || 
-    k.toLowerCase() === "d" || 
+    k === "ArrowRight" || k.toLowerCase() === "d" || 
     k === "ChannelUp" || c === 427 || 
     k === "PageUp" || c === 33 || 
     k === "ArrowUp" || c === 38
@@ -375,11 +386,9 @@ function globalKeyHandler(e) {
     return;
   }
 
-  /* --- Channel Down / Prev ---
-     Supports: ArrowLeft, A, ChannelDown (428), PageDown (34), ArrowDown (40) */
+  /* --- Channel Down / Prev --- */
   if (
-    k === "ArrowLeft" || 
-    k.toLowerCase() === "a" ||
+    k === "ArrowLeft" || k.toLowerCase() === "a" ||
     k === "ChannelDown" || c === 428 || 
     k === "PageDown" || c === 34 || 
     k === "ArrowDown" || c === 40
@@ -407,7 +416,7 @@ function globalKeyHandler(e) {
   }
 }
 
-// Window listener catches all bubbling events, including from Overlay.
+// Window listener catches all bubbling events
 window.addEventListener('keydown', globalKeyHandler);
 
 /* ------------------ TIME TV clock ------------------ */
