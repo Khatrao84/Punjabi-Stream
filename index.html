@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Punjabi Stream</title>
+  <link rel="icon" href="https://i.postimg.cc/FRDPFKpY/favicon-96x96.png" type="image/png">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Gurmukhi:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script src="https://www.youtube.com/iframe_api"></script>
+
+  <style>
+    html, body {
+      margin: 0; padding: 0; height: 100%;
+      background-color: black; font-family: sans-serif;
+      overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    #container { position: relative; width: 100vw; height: 100vh; }
+    #stream { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; z-index: 0; }
+    #stream iframe, #stream img { width: 100%; height: 100%; border: none; object-fit: cover; display:block; }
+
+    #hls-video {
+      position: absolute; top: 0; left: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      z-index: 1;
+      display: none;
+    }
+
+    /* overlay covers the whole screen and receives clicks & key focus */
+    #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; cursor: pointer; outline: none; }
+
+    #channelName {
+      position: absolute; bottom: -60px; left: 0;
+      width: 100%;
+      background: rgba(0,41,107,0.7); color: #ffd500;
+      padding: 12px 20px; font-size: 22px; font-weight: bold;
+      text-align: center; opacity: 0;
+      transition: all 0.6s ease; z-index: 3;
+      font-family: "Noto Sans Gurmukhi", sans-serif;
+    }
+    #channelName.show { bottom: 0; opacity: 1; }
+
+    .loading {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 50px; height: 50px;
+      border: 5px solid rgba(255, 213, 0, 0.3);
+      border-radius: 50%; border-top-color: #ffd500;
+      animation: spin 1s ease-in-out infinite;
+      z-index: 4; display: none;
+    }
+    @keyframes spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+
+    #time-tv {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      display: none;
+      z-index: 1;
+      background: url("https://i.postimg.cc/053WPD28/haarimandr.png") no-repeat center center;
+      background-size: cover;
+      font-family: "Arial Black", sans-serif;
+    }
+
+    #time-tv .clock {
+      position: absolute; top: 6%; right: 5%;
+      font-size: 6vw; color: #FFD700;
+      text-shadow: 0 0 10px #FFD700;
+    }
+    #time-tv .date {
+      position: absolute; top: 4%; right: 9%;
+      font-size: 2vw; color: #FFE066;
+    }
+
+    /* small helpful focus style when overlay is focused (won't be visible usually) */
+    #overlay:focus { outline: 2px solid rgba(255,255,255,0.02); }
+  </style>
+</head>
+
+<body>
+  <div id="container">
+    <div id="stream"></div>
+    <video id="hls-video" playsinline></video>
+
+    <div id="time-tv">
+      <div class="clock">00:00</div>
+      <div class="date">November 4, 2025</div>
+    </div>
+
+    <!-- overlay is full-screen and will receive clicks & keyboard focus -->
+    <div id="overlay" tabindex="0" aria-label="Stream overlay - click to change channel"></div>
+
+    <div id="channelName"></div>
+    <div class="loading" id="loading"></div>
+  </div>
+
+<script>
+/* -----------------------------------------------------
+   UPDATED FINAL CHANNEL LIST
+   - channel[0] and channel[1] (indexes 0 & 1) are YouTube
+   - channel[1] now includes a fallback image url
+----------------------------------------------------- */
+const CHANNELS = [
+  { 
+    name: "1. ਪਟਨਾ ਸਾਹਿਬ ਲਾਈਵ",
+    url: "https://www.youtube.com/embed/live_stream?channel=UC3nqw1kd4AK1q9e68YUoLDQ&autoplay=1&mute=0&modestbranding=1&controls=0&showinfo=0&rel=0&enablejsapi=1",
+    fallback: "https://www.youtube.com/embed/TTK7eNuI3M0?autoplay=1&mute=0&modestbranding=1&controls=0&showinfo=0&rel=0&enablejsapi=1",
+    type: "youtube"
+  },
+  { 
+    name: "2. ਅੰਮ੍ਰਿਤਸਰ ਸਾਹਿਬ ਲਾਈਵ",
+    url: "https://www.youtube.com/embed/live_stream?channel=UCYn6UEtQ771a_OWSiNBoG8w&autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0&enablejsapi=1",
+    // fallback for channel 2 (image) provided by you
+    fallback: "https://i.postimg.cc/qvVf6r1m/audioharimandar.png",
+    type: "youtube"
+  },
+  { name:"3. ਬਾਬਾ ਦੀਪ ਸਿੰਘ ਜੀ ਅੰਮ੍ਰਿਤਸਰ ਸਾਹਿਬ ਲਾਈਵ", url:"https://www.youtube.com/embed/live_stream?channel=UCxWx-MPft_7mKrFtN6uOaAA&autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0", type:"youtube" },
+  { name:"4. ਫਤੇਹਗੜ੍ਹ ਸਾਹਿਬ ਲਾਈਵ", url:"https://www.youtube.com/embed/live_stream?channel=UCudVHqnOekwcvpzNpY8_ERw&autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0", type:"youtube" },
+  { name:"5. ਆਨੰਦਪੁਰ ਸਾਹਿਬ ਲਾਈਵ", url:"https://www.youtube.com/embed/live_stream?channel=UCSx5035_us8h8DOp_YhQDaw&autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0", type:"youtube" },
+  { name:"6. ਦਮਦਮਾ ਸਾਹਿਬ ਲਾਈਵ", url:"https://www.youtube.com/embed/live_stream?channel=UCY8jMpyRRcdzSf6uLiU6izQ&autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0", type:"youtube" },
+  { name:"7. ਹਜ਼ੂਰ ਸਾਹਿਬ ਲਾਈਵ", url:"https://www.youtube.com/embed/live_stream?channel=UCuerQ47I9Y2qxr4eIopxbYw&autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0", type:"youtube" },
+  { name:"8. ਚੜਦੀਕਲਾ ਟਾਈਮ ਟੀਵੀ", url:"https://www.yupptv.com/yupptvnew/channels/chardikala-time-tv/live/embed", type:"iframe" },
+  { name:"9. ਡੀਡੀ ਪੰਜਾਬੀ", url:"https://d3eyhgoylams0m.cloudfront.net/v1/manifest/93ce20f0f52760bf38be911ff4c91ed02aa2fd92/ed7bd2c7-8d10-4051-b397-2f6b90f99acb/20c8ad14-a158-4a42-8889-e032d070856e/2.m3u8", type:"hls" },
+  { name:"0. ਲਾਈਵ ਟਾਈਮ", type:"time" }
+];
+
+const STREAM_DIV = document.getElementById('stream');
+const HLS_VIDEO = document.getElementById('hls-video');
+const TIME_TV = document.getElementById('time-tv');
+const channelNameBox = document.getElementById('channelName');
+const loadingIndicator = document.getElementById('loading');
+const OVERLAY = document.getElementById('overlay');
+
+let currentChannel = parseInt(localStorage.getItem('currentChannel')) || 0;
+if (currentChannel < 0 || currentChannel >= CHANNELS.length) currentChannel = 0;
+
+let hideTimeout, hls, youtubePlayer, refreshTimer;
+let usingFallbackCh1 = false;
+let usingFallbackCh2 = false;
+let ytPlayerForCh1 = null;
+let ytPlayerForCh2 = null;
+let fallbackCheckTimerCh1 = null;
+let fallbackCheckTimerCh2 = null;
+let ytApiReady = false;
+let pendingPlayerInitCh1 = false;
+let pendingPlayerInitCh2 = false;
+
+window.onYouTubeIframeAPIReady = function() {
+  ytApiReady = true;
+  if (pendingPlayerInitCh1) { initYouTubePlayerForCh1(); pendingPlayerInitCh1 = false; }
+  if (pendingPlayerInitCh2) { initYouTubePlayerForCh2(); pendingPlayerInitCh2 = false; }
+};
+
+/* ------------------ channel loading ------------------ */
+function loadChannel(index) {
+  localStorage.setItem('currentChannel', index);
+
+  loadingIndicator.style.display = 'block';
+  STREAM_DIV.style.display = 'none';
+  HLS_VIDEO.style.display = 'none';
+  TIME_TV.style.display = 'none';
+  STREAM_DIV.innerHTML = '';
+  HLS_VIDEO.pause();
+
+  // reset flags & timers for both channels when switching
+  usingFallbackCh1 = false;
+  usingFallbackCh2 = false;
+  if (fallbackCheckTimerCh1) clearTimeout(fallbackCheckTimerCh1);
+  if (fallbackCheckTimerCh2) clearTimeout(fallbackCheckTimerCh2);
+  if (hls) { hls.destroy(); hls = null; }
+  if (ytPlayerForCh1) { try { ytPlayerForCh1.destroy(); } catch(e){} ytPlayerForCh1 = null; }
+  if (ytPlayerForCh2) { try { ytPlayerForCh2.destroy(); } catch(e){} ytPlayerForCh2 = null; }
+
+  const channel = CHANNELS[index];
+
+  if (index === 0 && channel.type === 'youtube') {
+    loadChannel1WithFallback(channel);
+  } else if (index === 1 && channel.type === 'youtube') {
+    loadChannel2WithFallback(channel);
+  } else if (channel.type === 'youtube') {
+    STREAM_DIV.style.display = 'block';
+    const iframe = document.createElement('iframe');
+    iframe.src = channel.url;
+    iframe.setAttribute('allow', 'autoplay; encrypted-media; fullscreen');
+    iframe.onload = () => loadingIndicator.style.display = 'none';
+    STREAM_DIV.appendChild(iframe);
+
+  } else if (channel.type === 'iframe') {
+    STREAM_DIV.style.display = 'block';
+    const iframe = document.createElement('iframe');
+    iframe.src = channel.url;
+    iframe.setAttribute('allow', 'autoplay; encrypted-media; fullscreen');
+    iframe.onload = () => loadingIndicator.style.display = 'none';
+    STREAM_DIV.appendChild(iframe);
+
+  } else if (channel.type === 'hls') {
+    HLS_VIDEO.style.display = 'block';
+    if (HLS_VIDEO.canPlayType('application/vnd.apple.mpegurl')) {
+      HLS_VIDEO.src = channel.url;
+      HLS_VIDEO.addEventListener('loadedmetadata', () => { HLS_VIDEO.play(); loadingIndicator.style.display = 'none'; });
+    } else if (Hls.isSupported()) {
+      hls = new Hls();
+      hls.loadSource(channel.url);
+      hls.attachMedia(HLS_VIDEO);
+      hls.on(Hls.Events.MANIFEST_PARSED, () => { HLS_VIDEO.play(); loadingIndicator.style.display = 'none'; });
+    }
+
+  } else if (channel.type === 'time') {
+    TIME_TV.style.display = 'block';
+    loadingIndicator.style.display = 'none';
+  }
+
+  showChannelName(channel.name);
+  setupAutoRefresh();
+
+  // ensure overlay has focus so keyboard works even when iframe was focused previously
+  try { OVERLAY.focus({preventScroll: true}); } catch (e) { OVERLAY.focus(); }
+}
+
+/* ------------------ Channel 1 fallback handling (existing) ------------------ */
+function loadChannel1WithFallback(channel) {
+  STREAM_DIV.style.display = 'block';
+  const iframe = document.createElement('iframe');
+  iframe.id = 'ch1-iframe';
+  const streamUrl = usingFallbackCh1 ? channel.fallback : channel.url;
+  iframe.src = streamUrl;
+  iframe.setAttribute('allow', 'autoplay; encrypted-media; fullscreen');
+  iframe.style.width = '100%';
+  iframe.style.height = '100%';
+  iframe.style.border = 'none';
+
+  iframe.onload = () => {
+    loadingIndicator.style.display = 'none';
+    if (!usingFallbackCh1) {
+      setTimeout(() => {
+        if (ytApiReady) initYouTubePlayerForCh1();
+        else pendingPlayerInitCh1 = true;
+      }, 1000);
+    }
+  };
+
+  STREAM_DIV.appendChild(iframe);
+}
+
+function initYouTubePlayerForCh1() {
+  if (!ytApiReady || usingFallbackCh1) return;
+  try {
+    ytPlayerForCh1 = new YT.Player('ch1-iframe', {
+      events: {
+        onReady: onCh1Ready,
+        onStateChange: onCh1StateChange,
+        onError: onCh1Error
+      }
+    });
+  } catch (e) {}
+}
+
+function onCh1Ready() {
+  if (usingFallbackCh1) return;
+  fallbackCheckTimerCh1 = setTimeout(() => {
+    if (!usingFallbackCh1 && ytPlayerForCh1) {
+      const state = ytPlayerForCh1.getPlayerState();
+      if (state === -1 || state === 5) tryActivateFallbackCh1();
+    }
+  }, 20000);
+}
+
+function onCh1StateChange(event) {
+  if (usingFallbackCh1) return;
+  if (event.data === 0) tryActivateFallbackCh1();
+  else if (event.data === 1 || event.data === 3) {
+    if (fallbackCheckTimerCh1) clearTimeout(fallbackCheckTimerCh1);
+  }
+}
+
+function onCh1Error() {
+  if (!usingFallbackCh1) tryActivateFallbackCh1();
+}
+
+function tryActivateFallbackCh1() {
+  if (usingFallbackCh1) return;
+  usingFallbackCh1 = true;
+  if (fallbackCheckTimerCh1) clearTimeout(fallbackCheckTimerCh1);
+  if (ytPlayerForCh1) { try { ytPlayerForCh1.destroy(); } catch(e){} ytPlayerForCh1 = null; }
+
+  loadingIndicator.style.display = 'block';
+  STREAM_DIV.innerHTML = '';
+  // for channel1 fallback we use the provided fallback iframe URL (already in channel.fallback)
+  const iframe = document.createElement('iframe');
+  iframe.src = CHANNELS[0].fallback;
+  iframe.setAttribute('allow', 'autoplay; encrypted-media; fullscreen');
+  iframe.style.width = '100%'; iframe.style.height = '100%'; iframe.style.border = 'none';
+  iframe.onload = () => loadingIndicator.style.display = 'none';
+  STREAM_DIV.appendChild(iframe);
+}
+
+/* ------------------ Channel 2 fallback handling (new) ------------------ */
+/* Logic mirrors channel 1 but fallback is an image URL (provided by user) */
+function loadChannel2WithFallback(channel) {
+  STREAM_DIV.style.display = 'block';
+  const iframe = document.createElement('iframe');
+  iframe.id = 'ch2-iframe';
+  const streamUrl = usingFallbackCh2 ? (channel.fallback || '') : channel.url;
+  iframe.src = streamUrl;
+  iframe.setAttribute('allow', 'autoplay; encrypted-media; fullscreen');
+  iframe.style.width = '100%';
+  iframe.style.height = '100%';
+  iframe.style.border = 'none';
+
+  iframe.onload = () => {
+    loadingIndicator.style.display = 'none';
+    if (!usingFallbackCh2) {
+      setTimeout(() => {
+        if (ytApiReady) initYouTubePlayerForCh2();
+        else pendingPlayerInitCh2 = true;
+      }, 1000);
+    }
+  };
+
+  STREAM_DIV.appendChild(iframe);
+}
+
+function initYouTubePlayerForCh2() {
+  if (!ytApiReady || usingFallbackCh2) return;
+  try {
+    ytPlayerForCh2 = new YT.Player('ch2-iframe', {
+      events: {
+        onReady: onCh2Ready,
+        onStateChange: onCh2StateChange,
+        onError: onCh2Error
+      }
+    });
+  } catch (e) {}
+}
+
+function onCh2Ready() {
+  if (usingFallbackCh2) return;
+  fallbackCheckTimerCh2 = setTimeout(() => {
+    if (!usingFallbackCh2 && ytPlayerForCh2) {
+      const state = ytPlayerForCh2.getPlayerState();
+      if (state === -1 || state === 5) tryActivateFallbackCh2();
+    }
+  }, 20000);
+}
+
+function onCh2StateChange(event) {
+  if (usingFallbackCh2) return;
+  if (event.data === 0) tryActivateFallbackCh2();
+  else if (event.data === 1 || event.data === 3) {
+    if (fallbackCheckTimerCh2) clearTimeout(fallbackCheckTimerCh2);
+  }
+}
+
+function onCh2Error() {
+  if (!usingFallbackCh2) tryActivateFallbackCh2();
+}
+
+function tryActivateFallbackCh2() {
+  if (usingFallbackCh2) return;
+  usingFallbackCh2 = true;
+  if (fallbackCheckTimerCh2) clearTimeout(fallbackCheckTimerCh2);
+  if (ytPlayerForCh2) { try { ytPlayerForCh2.destroy(); } catch(e){} ytPlayerForCh2 = null; }
+
+  loadingIndicator.style.display = 'block';
+  STREAM_DIV.innerHTML = '';
+
+  // channel 2 fallback is an image — show it full-screen
+  if (CHANNELS[1] && CHANNELS[1].fallback) {
+    const img = document.createElement('img');
+    img.src = CHANNELS[1].fallback;
+    img.alt = CHANNELS[1].name + " fallback";
+    img.onload = () => { loadingIndicator.style.display = 'none'; };
+    img.onerror = () => { loadingIndicator.style.display = 'none'; };
+    STREAM_DIV.appendChild(img);
+  } else {
+    // no fallback provided, show a blank fallback (safe guard)
+    const div = document.createElement('div');
+    div.style.width = '100%';
+    div.style.height = '100%';
+    div.style.background = 'black';
+    STREAM_DIV.appendChild(div);
+    loadingIndicator.style.display = 'none';
+  }
+}
+
+/* ------------------ UI helpers ------------------ */
+
+function showChannelName(name) {
+  channelNameBox.textContent = name;
+  channelNameBox.classList.add("show");
+  clearTimeout(hideTimeout);
+  hideTimeout = setTimeout(() => channelNameBox.classList.remove("show"), 3000);
+}
+
+function setupAutoRefresh() {
+  clearTimeout(refreshTimer);
+  refreshTimer = setTimeout(() => window.location.reload(), 5400000);
+}
+
+function nextChannel() { currentChannel = (currentChannel + 1) % CHANNELS.length; loadChannel(currentChannel); }
+function prevChannel() { currentChannel = (currentChannel - 1 + CHANNELS.length) % CHANNELS.length; loadChannel(currentChannel); }
+function jumpToChannel(index) { 
+  if (index < 0) index = 0;
+  if (index >= CHANNELS.length) index = CHANNELS.length - 1;
+  currentChannel = index; loadChannel(currentChannel); 
+}
+
+/* -----------------------------------------------------
+   Click + Keyboard handlers (robust)
+----------------------------------------------------- */
+
+/* overlay click */
+OVERLAY.addEventListener('click', (ev) => {
+  ev.stopPropagation();
+  nextChannel();
+});
+
+/* put an ARIA role for accessibility */
+OVERLAY.setAttribute('role', 'button');
+OVERLAY.setAttribute('aria-label', 'Next channel (click or press keys 1-9,0)');
+
+function globalKeyHandler(e) {
+  if (e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) return;
+
+  const k = e.key;
+
+  if (k === "ArrowRight" || k.toLowerCase() === "d") {
+    e.preventDefault();
+    nextChannel();
+    try { OVERLAY.focus({preventScroll: true}); } catch (err) { OVERLAY.focus(); }
+    return;
+  }
+  if (k === "ArrowLeft" || k.toLowerCase() === "a") {
+    e.preventDefault();
+    prevChannel();
+    try { OVERLAY.focus({preventScroll: true}); } catch (err) { OVERLAY.focus(); }
+    return;
+  }
+
+  if (/^[1-9]$/.test(k)) {
+    e.preventDefault();
+    const idx = parseInt(k, 10) - 1;
+    jumpToChannel(idx);
+    try { OVERLAY.focus({preventScroll: true}); } catch (err) { OVERLAY.focus(); }
+    return;
+  }
+  if (k === "0") {
+    e.preventDefault();
+    jumpToChannel(9);
+    try { OVERLAY.focus({preventScroll: true}); } catch (err) { OVERLAY.focus(); }
+    return;
+  }
+}
+
+window.addEventListener('keydown', globalKeyHandler);
+OVERLAY.addEventListener('keydown', globalKeyHandler);
+
+/* ------------------ TIME TV clock ------------------ */
+function updateLocalTime() {
+  const now = new Date();
+  document.querySelector('#time-tv .clock').textContent = now.toLocaleTimeString();
+  document.querySelector('#time-tv .date').textContent = now.toLocaleDateString();
+}
+setInterval(updateLocalTime, 1000);
+updateLocalTime();
+
+/* ------------------ ensure overlay focus on load for keyboard to work reliably ------------------ */
+try { OVERLAY.focus({preventScroll: true}); } catch (e) { OVERLAY.focus(); }
+
+/* ------------------ Load saved channel ------------------ */
+loadChannel(currentChannel);
+</script>
+
+</body>
+</html>
