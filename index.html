@@ -89,7 +89,6 @@
       <div class="date">November 4, 2025</div>
     </div>
 
-    <!-- overlay is full-screen and will receive clicks & keyboard focus -->
     <div id="overlay" tabindex="0" aria-label="Stream overlay - click to change channel"></div>
 
     <div id="channelName"></div>
@@ -99,8 +98,8 @@
 <script>
 /* -----------------------------------------------------
    UPDATED FINAL CHANNEL LIST
-   - channel[0] and channel[1] (indexes 0 & 1) are YouTube
-   - channel[1] now includes a fallback image url
+   - channel[0] has fallback
+   - channel[1] is now normal YouTube (no fallback)
 ----------------------------------------------------- */
 const CHANNELS = [
   { 
@@ -112,8 +111,6 @@ const CHANNELS = [
   { 
     name: "2. ਅੰਮ੍ਰਿਤਸਰ ਸਾਹਿਬ ਲਾਈਵ",
     url: "https://www.youtube.com/embed/live_stream?channel=UCYn6UEtQ771a_OWSiNBoG8w&autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0&enablejsapi=1",
-    // fallback for channel 2 (image) provided by you
-    fallback: "https://i.postimg.cc/qvVf6r1m/audioharimandar.png",
     type: "youtube"
   },
   { name:"3. ਬਾਬਾ ਦੀਪ ਸਿੰਘ ਜੀ ਅੰਮ੍ਰਿਤਸਰ ਸਾਹਿਬ ਲਾਈਵ", url:"https://www.youtube.com/embed/live_stream?channel=UCxWx-MPft_7mKrFtN6uOaAA&autoplay=1&modestbranding=1&controls=0&showinfo=0&rel=0", type:"youtube" },
@@ -136,21 +133,18 @@ const OVERLAY = document.getElementById('overlay');
 let currentChannel = parseInt(localStorage.getItem('currentChannel')) || 0;
 if (currentChannel < 0 || currentChannel >= CHANNELS.length) currentChannel = 0;
 
-let hideTimeout, hls, youtubePlayer, refreshTimer;
+let hideTimeout, hls, refreshTimer;
+
+// --- Channel 1 (Patna Sahib) specific fallback variables ---
 let usingFallbackCh1 = false;
-let usingFallbackCh2 = false;
 let ytPlayerForCh1 = null;
-let ytPlayerForCh2 = null;
 let fallbackCheckTimerCh1 = null;
-let fallbackCheckTimerCh2 = null;
 let ytApiReady = false;
 let pendingPlayerInitCh1 = false;
-let pendingPlayerInitCh2 = false;
 
 window.onYouTubeIframeAPIReady = function() {
   ytApiReady = true;
   if (pendingPlayerInitCh1) { initYouTubePlayerForCh1(); pendingPlayerInitCh1 = false; }
-  if (pendingPlayerInitCh2) { initYouTubePlayerForCh2(); pendingPlayerInitCh2 = false; }
 };
 
 /* ------------------ channel loading ------------------ */
@@ -164,26 +158,27 @@ function loadChannel(index) {
   STREAM_DIV.innerHTML = '';
   HLS_VIDEO.pause();
 
-  // reset flags & timers for both channels when switching
+  // reset flags & timers for Channel 1 when switching
   usingFallbackCh1 = false;
-  usingFallbackCh2 = false;
   if (fallbackCheckTimerCh1) clearTimeout(fallbackCheckTimerCh1);
-  if (fallbackCheckTimerCh2) clearTimeout(fallbackCheckTimerCh2);
   if (hls) { hls.destroy(); hls = null; }
   if (ytPlayerForCh1) { try { ytPlayerForCh1.destroy(); } catch(e){} ytPlayerForCh1 = null; }
-  if (ytPlayerForCh2) { try { ytPlayerForCh2.destroy(); } catch(e){} ytPlayerForCh2 = null; }
 
   const channel = CHANNELS[index];
 
+  // Channel 1 specific logic with fallback
   if (index === 0 && channel.type === 'youtube') {
     loadChannel1WithFallback(channel);
-  } else if (index === 1 && channel.type === 'youtube') {
-    loadChannel2WithFallback(channel);
-  } else if (channel.type === 'youtube') {
+  } 
+  // All other YouTube channels (including Channel 2 now)
+  else if (channel.type === 'youtube') {
     STREAM_DIV.style.display = 'block';
     const iframe = document.createElement('iframe');
     iframe.src = channel.url;
     iframe.setAttribute('allow', 'autoplay; encrypted-media; fullscreen');
+    iframe.style.width = '100%';
+    iframe.style.height = '100%';
+    iframe.style.border = 'none';
     iframe.onload = () => loadingIndicator.style.display = 'none';
     STREAM_DIV.appendChild(iframe);
 
@@ -219,7 +214,7 @@ function loadChannel(index) {
   try { OVERLAY.focus({preventScroll: true}); } catch (e) { OVERLAY.focus(); }
 }
 
-/* ------------------ Channel 1 fallback handling (existing) ------------------ */
+/* ------------------ Channel 1 fallback handling ------------------ */
 function loadChannel1WithFallback(channel) {
   STREAM_DIV.style.display = 'block';
   const iframe = document.createElement('iframe');
@@ -294,95 +289,6 @@ function tryActivateFallbackCh1() {
   iframe.style.width = '100%'; iframe.style.height = '100%'; iframe.style.border = 'none';
   iframe.onload = () => loadingIndicator.style.display = 'none';
   STREAM_DIV.appendChild(iframe);
-}
-
-/* ------------------ Channel 2 fallback handling (new) ------------------ */
-/* Logic mirrors channel 1 but fallback is an image URL (provided by user) */
-function loadChannel2WithFallback(channel) {
-  STREAM_DIV.style.display = 'block';
-  const iframe = document.createElement('iframe');
-  iframe.id = 'ch2-iframe';
-  const streamUrl = usingFallbackCh2 ? (channel.fallback || '') : channel.url;
-  iframe.src = streamUrl;
-  iframe.setAttribute('allow', 'autoplay; encrypted-media; fullscreen');
-  iframe.style.width = '100%';
-  iframe.style.height = '100%';
-  iframe.style.border = 'none';
-
-  iframe.onload = () => {
-    loadingIndicator.style.display = 'none';
-    if (!usingFallbackCh2) {
-      setTimeout(() => {
-        if (ytApiReady) initYouTubePlayerForCh2();
-        else pendingPlayerInitCh2 = true;
-      }, 1000);
-    }
-  };
-
-  STREAM_DIV.appendChild(iframe);
-}
-
-function initYouTubePlayerForCh2() {
-  if (!ytApiReady || usingFallbackCh2) return;
-  try {
-    ytPlayerForCh2 = new YT.Player('ch2-iframe', {
-      events: {
-        onReady: onCh2Ready,
-        onStateChange: onCh2StateChange,
-        onError: onCh2Error
-      }
-    });
-  } catch (e) {}
-}
-
-function onCh2Ready() {
-  if (usingFallbackCh2) return;
-  fallbackCheckTimerCh2 = setTimeout(() => {
-    if (!usingFallbackCh2 && ytPlayerForCh2) {
-      const state = ytPlayerForCh2.getPlayerState();
-      if (state === -1 || state === 5) tryActivateFallbackCh2();
-    }
-  }, 20000);
-}
-
-function onCh2StateChange(event) {
-  if (usingFallbackCh2) return;
-  if (event.data === 0) tryActivateFallbackCh2();
-  else if (event.data === 1 || event.data === 3) {
-    if (fallbackCheckTimerCh2) clearTimeout(fallbackCheckTimerCh2);
-  }
-}
-
-function onCh2Error() {
-  if (!usingFallbackCh2) tryActivateFallbackCh2();
-}
-
-function tryActivateFallbackCh2() {
-  if (usingFallbackCh2) return;
-  usingFallbackCh2 = true;
-  if (fallbackCheckTimerCh2) clearTimeout(fallbackCheckTimerCh2);
-  if (ytPlayerForCh2) { try { ytPlayerForCh2.destroy(); } catch(e){} ytPlayerForCh2 = null; }
-
-  loadingIndicator.style.display = 'block';
-  STREAM_DIV.innerHTML = '';
-
-  // channel 2 fallback is an image — show it full-screen
-  if (CHANNELS[1] && CHANNELS[1].fallback) {
-    const img = document.createElement('img');
-    img.src = CHANNELS[1].fallback;
-    img.alt = CHANNELS[1].name + " fallback";
-    img.onload = () => { loadingIndicator.style.display = 'none'; };
-    img.onerror = () => { loadingIndicator.style.display = 'none'; };
-    STREAM_DIV.appendChild(img);
-  } else {
-    // no fallback provided, show a blank fallback (safe guard)
-    const div = document.createElement('div');
-    div.style.width = '100%';
-    div.style.height = '100%';
-    div.style.background = 'black';
-    STREAM_DIV.appendChild(div);
-    loadingIndicator.style.display = 'none';
-  }
 }
 
 /* ------------------ UI helpers ------------------ */
