@@ -66,7 +66,7 @@ const CHANNELS = [
   { name: "5. ਆਨੰਦਪੁਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCSx5035_us8h8DOp_YhQDaw", type: "auto-live" },
   { name: "6. ਦਮਦਮਾ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCY8jMpyRRcdzSf6uLiU6izQ", type: "auto-live" },
   { name: "7. ਹਜ਼ੂਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCuerQ47I9Y2qxr4eIopxbYw", type: "auto-live" },
-  { name: "8. ਚੜਦੀਕਲਾ ਟਾਈਮ ਟੀਵੀ", id: "live_stream?channel=UCuG7_X6VSuunU0_lXN_T63A", type: "youtube-fixed" },
+  { name: "8. ਚੜਦੀਕਲਾ ਟਾਈਮ ਟੀਵੀ", url: "https://www.yupptv.com/yupptvnew/channels/chardikala-time-tv/live/embed", type: "iframe" },
   { name: "9. ਡੀਡੀ ਪੰਜਾਬੀ", url: "https://d3eyhgoylams0m.cloudfront.net/v1/manifest/93ce20f0f52760bf38be911ff4c91ed02aa2fd92/ed7bd2c7-8d10-4051-b397-2f6b90f99acb/20c8ad14-a158-4a42-8889-e032d070856e/2.m3u8", type: "hls" },
   { name: "0. ਲਾਈਵ ਟਾਈਮ", type: "time" }
 ];
@@ -129,20 +129,26 @@ function loadChannel(index, toggle = 0) {
         let items = data.items || [];
         let vidId;
         let activeStyle = 0;
+        
+        // ONLY allow toggle for Channel 2 (index 1) and Channel 4 (index 3)
         const canToggle = (index === 1 || index === 3);
 
         if (canToggle && toggle === 1 && items.length >= 2) {
             const pubDate = new Date(items[1].pubDate).getTime();
-            const diffHours = (new Date().getTime() - pubDate) / (1000 * 60 * 60);
+            const now = new Date().getTime();
+            const diffHours = (now - pubDate) / (1000 * 60 * 60);
+
             if (diffHours < 12) {
                 vidId = items[1].link.split('v=')[1];
-                activeStyle = 1;
+                activeStyle = 1; 
             } else {
                 vidId = items[0].link.split('v=')[1];
-                streamToggle = 0;
+                streamToggle = 0; 
+                activeStyle = 0;
             }
         } else {
             vidId = items.length > 0 ? items[0].link.split('v=')[1] : `live_stream?channel=${channel.channelId}`;
+            activeStyle = 0;
         }
         
         STREAM_DIV.innerHTML = `<iframe src="https://www.youtube.com/embed/${vidId}?autoplay=1&modestbranding=1&controls=0&rel=0" allow="autoplay; fullscreen"></iframe>`;
@@ -154,6 +160,12 @@ function loadChannel(index, toggle = 0) {
         STREAM_DIV.querySelector('iframe').onload = () => loadingIndicator.style.display = 'none';
         showChannelName(channel.name, 0);
       });
+
+  } else if (channel.type === 'iframe') {
+    STREAM_DIV.style.display = 'block';
+    STREAM_DIV.innerHTML = `<iframe src="${channel.url}" allow="autoplay; fullscreen"></iframe>`;
+    STREAM_DIV.querySelector('iframe').onload = () => loadingIndicator.style.display = 'none';
+    showChannelName(channel.name, 0);
 
   } else if (channel.type === 'hls') {
     HLS_VIDEO.style.display = 'block';
@@ -241,4 +253,3 @@ loadChannel(currentChannel);
 </script>
 </body>
 </html>
-
