@@ -25,8 +25,11 @@
       padding: 15px 20px; font-size: 24px; font-weight: bold;
       text-align: center; opacity: 0; transition: all 0.5s ease; z-index: 3;
     }
+    /* Stream 1: Gold Text on Blue Background */
     .style-main { background: rgba(0,41,107,0.85); color: #ffd500; }
-    .style-alt { background: rgba(255,213,0,0.9); color: #00296b; }
+    /* Stream 2: Blue Text on Gold Background */
+    .style-alt { background: rgba(255, 215, 0, 0.95); color: #00296b; }
+    
     #channelName.show { bottom: 0; opacity: 1; }
     
     .loading {
@@ -83,7 +86,6 @@ let refreshTimer, loadTimeout, hideTimeout, hls;
 let lastScrollTime = 0;
 const SCROLL_SPEED_MS = 400;
 
-// YouTube API variables for Channel 1 Fallback
 let usingFallbackCh1 = false;
 let ytPlayerForCh1 = null;
 let fallbackCheckTimerCh1 = null;
@@ -105,7 +107,6 @@ function loadChannel(index, toggle = 0) {
   if (hls) { hls.destroy(); hls = null; }
   HLS_VIDEO.pause();
 
-  // Reset Ch1 logic on every switch
   usingFallbackCh1 = false;
   if (fallbackCheckTimerCh1) clearTimeout(fallbackCheckTimerCh1);
   if (ytPlayerForCh1) { try { ytPlayerForCh1.destroy(); } catch(e){} ytPlayerForCh1 = null; }
@@ -129,10 +130,10 @@ function loadChannel(index, toggle = 0) {
 
             if (diffHours < 12) {
                 vidId = items[1].link.split('v=')[1];
-                activeStyle = 1; // Alt style
+                activeStyle = 1; 
             } else {
                 vidId = items[0].link.split('v=')[1];
-                streamToggle = 0; // Force back to primary
+                streamToggle = 0; 
                 activeStyle = 0;
             }
         } else {
@@ -182,7 +183,6 @@ function loadChannel(index, toggle = 0) {
   setupAutoRefresh();
 }
 
-/* Fallback Monitoring for Channel 1 Only */
 function initYouTubePlayerForCh1() {
   if (!ytApiReady || usingFallbackCh1) return;
   ytPlayerForCh1 = new YT.Player('ch1-iframe', { events: { onReady: onCh1Ready, onStateChange: onCh1StateChange, onError: onCh1Error } });
@@ -197,7 +197,7 @@ function tryActivateFallbackCh1() {
 
 function setupAutoRefresh() {
   clearTimeout(refreshTimer);
-  refreshTimer = setTimeout(() => { window.location.reload(); }, 10800000); // 3 Hours
+  refreshTimer = setTimeout(() => { window.location.reload(); }, 10800000); 
 }
 
 function showChannelName(name, styleType) {
@@ -212,7 +212,6 @@ function queueChannelLoad(index) {
   if (now - lastScrollTime < SCROLL_SPEED_MS) return;
   lastScrollTime = now;
 
-  // EXCEPTION: Channel 1 (index 0) does NOT toggle Alt Stream
   if (currentChannel === index && index !== 0) {
     streamToggle = (streamToggle === 0) ? 1 : 0;
   } else {
