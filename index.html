@@ -121,43 +121,27 @@ function loadChannel(index, toggle = 0) {
 
   } else if (channel.type === 'auto-live') {
     STREAM_DIV.style.display = 'block';
-    const rssUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${channel.channelId}`;
-    fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`)
-      .then(res => res.json())
-      .then(data => {
-        let items = data.items || [];
-        let vidId;
-        let activeStyle = 0;
-        const canToggle = (index === 1 || index === 3);
+    
+    // Check if we are on CH2 or CH4 and if toggle is active
+    const isSpecialToggle = (index === 1 || index === 3);
 
-        if (canToggle && toggle === 1 && items.length >= 2) {
-            const title = items[1].title.toLowerCase();
-            const pubDate = new Date(items[1].pubDate).getTime();
-            const diffHours = (new Date().getTime() - pubDate) / (1000 * 60 * 60);
-
-            // Double Check: Must be <12 hours old AND must have "Live" keywords
-            const isActuallyLive = title.includes("live") || title.includes("ਲਾਈਵ") || title.includes("direct");
-
-            if (diffHours < 12 && isActuallyLive) {
-                vidId = items[1].link.split('v=')[1];
-                activeStyle = 1;
-            } else {
-                vidId = items[0].link.split('v=')[1];
-                streamToggle = 0;
-            }
-        } else {
-            vidId = items.length > 0 ? items[0].link.split('v=')[1] : `live_stream?channel=${channel.channelId}`;
-        }
-        
-        STREAM_DIV.innerHTML = `<iframe src="https://www.youtube.com/embed/${vidId}?autoplay=1&modestbranding=1&controls=0&rel=0" allow="autoplay; fullscreen"></iframe>`;
-        STREAM_DIV.querySelector('iframe').onload = () => loadingIndicator.style.display = 'none';
-        showChannelName(channel.name, activeStyle);
-      })
-      .catch(() => {
-        STREAM_DIV.innerHTML = `<iframe src="https://www.youtube.com/embed/live_stream?channel=${channel.channelId}&autoplay=1&controls=0" allow="autoplay; fullscreen"></iframe>`;
-        STREAM_DIV.querySelector('iframe').onload = () => loadingIndicator.style.display = 'none';
-        showChannelName(channel.name, 0);
-      });
+    if (isSpecialToggle && toggle === 1) {
+        // FETCH RSS for the 2nd stream specifically
+        const rssUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${channel.channelId}`;
+        fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`)
+          .then(res => res.json())
+          .then(data => {
+            let items = data.items || [];
+            let vidId = (items.length >= 2) ? items[1].link.split('v=')[1] : items[0].link.split('v=')[1];
+            STREAM_DIV.innerHTML = `<iframe src="https://www.youtube.com/embed/${vidId}?autoplay=1&modestbranding=1&controls=0&rel=0" allow="autoplay; fullscreen"></iframe>`;
+            STREAM_DIV.querySelector('iframe').onload = () => loadingIndicator.style.display = 'none';
+            showChannelName(channel.name, 1);
+          })
+          .catch(() => loadDirectLive(channel.channelId, channel.name));
+    } else {
+        // DEFAULT: Use the Direct Live link (Always finds the current live stream)
+        loadDirectLive(channel.channelId, channel.name);
+    }
 
   } else if (channel.type === 'iframe') {
     STREAM_DIV.style.display = 'block';
@@ -177,6 +161,12 @@ function loadChannel(index, toggle = 0) {
     showChannelName(channel.name, 0);
   }
   setupAutoRefresh();
+}
+
+function loadDirectLive(channelId, name) {
+    STREAM_DIV.innerHTML = `<iframe src="https://www.youtube.com/embed/live_stream?channel=${channelId}&autoplay=1&modestbranding=1&controls=0&rel=0" allow="autoplay; fullscreen"></iframe>`;
+    STREAM_DIV.querySelector('iframe').onload = () => loadingIndicator.style.display = 'none';
+    showChannelName(name, 0);
 }
 
 function initFallbackLogic(fallbackId) {
@@ -251,4 +241,3 @@ loadChannel(currentChannel);
 </script>
 </body>
 </html>
-
