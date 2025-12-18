@@ -113,7 +113,6 @@ function loadChannel(index, toggle = 0) {
     STREAM_DIV.style.display = 'block';
     const vidUrl = `https://www.youtube.com/embed/${channel.id}?autoplay=1&mute=0&modestbranding=1&controls=0&showinfo=0&rel=0&enablejsapi=1`;
     STREAM_DIV.innerHTML = `<iframe id="yt-player" src="${vidUrl}" allow="autoplay; fullscreen"></iframe>`;
-    
     STREAM_DIV.querySelector('iframe').onload = () => {
       loadingIndicator.style.display = 'none';
       if (index === 0 && ytApiReady) initFallbackLogic(channel.fallback);
@@ -129,23 +128,12 @@ function loadChannel(index, toggle = 0) {
         let items = data.items || [];
         let vidId;
         let activeStyle = 0;
-        
-        // ONLY allow toggle for Channel 2 (index 1) and Channel 4 (index 3)
         const canToggle = (index === 1 || index === 3);
 
         if (canToggle && toggle === 1 && items.length >= 2) {
-            const pubDate = new Date(items[1].pubDate).getTime();
-            const now = new Date().getTime();
-            const diffHours = (now - pubDate) / (1000 * 60 * 60);
-
-            if (diffHours < 12) {
-                vidId = items[1].link.split('v=')[1];
-                activeStyle = 1; 
-            } else {
-                vidId = items[0].link.split('v=')[1];
-                streamToggle = 0; 
-                activeStyle = 0;
-            }
+            // ALL FILTERS REMOVED: Just grab the 2nd item directly
+            vidId = items[1].link.split('v=')[1];
+            activeStyle = 1; 
         } else {
             vidId = items.length > 0 ? items[0].link.split('v=')[1] : `live_stream?channel=${channel.channelId}`;
             activeStyle = 0;
@@ -253,3 +241,4 @@ loadChannel(currentChannel);
 </script>
 </body>
 </html>
+
