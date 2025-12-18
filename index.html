@@ -12,29 +12,31 @@
     html, body {
       margin: 0; padding: 0; height: 100%;
       background-color: black; font-family: "Noto Sans Gurmukhi", sans-serif;
-      overflow: hidden;
-      -webkit-tap-highlight-color: transparent;
-      user-select: none;
+      overflow: hidden; -webkit-tap-highlight-color: transparent; user-select: none;
     }
     #container { position: relative; width: 100vw; height: 100vh; }
-    #stream { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; z-index: 0; }
-    #stream iframe, #stream img { width: 100%; height: 100%; border: none; object-fit: cover; display:block; }
+    #stream { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
+    #stream iframe { width: 100%; height: 100%; border: none; display:block; }
     #hls-video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; display: none; }
     #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; cursor: pointer; outline: none; }
+    
     #channelName {
-      position: absolute; bottom: -60px; left: 0; width: 100%;
-      background: rgba(0,41,107,0.7); color: #ffd500;
-      padding: 12px 20px; font-size: 22px; font-weight: bold;
-      text-align: center; opacity: 0; transition: all 0.6s ease; z-index: 3;
+      position: absolute; bottom: -80px; left: 0; width: 100%;
+      padding: 15px 20px; font-size: 24px; font-weight: bold;
+      text-align: center; opacity: 0; transition: all 0.5s ease; z-index: 3;
     }
+    .style-main { background: rgba(0,41,107,0.85); color: #ffd500; }
+    .style-alt { background: rgba(255,213,0,0.9); color: #00296b; }
     #channelName.show { bottom: 0; opacity: 1; }
+    
     .loading {
       position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      width: 50px; height: 50px; border: 5px solid rgba(255, 213, 0, 0.3);
+      width: 60px; height: 60px; border: 6px solid rgba(255, 213, 0, 0.2);
       border-radius: 50%; border-top-color: #ffd500;
-      animation: spin 1s ease-in-out infinite; z-index: 4; display: none;
+      animation: spin 1s linear infinite; z-index: 4; display: none;
     }
     @keyframes spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+    
     #time-tv {
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
       display: none; z-index: 1; background: url("https://i.postimg.cc/053WPD28/haarimandr.png") no-repeat center center;
@@ -42,16 +44,15 @@
     }
     #time-tv .clock { position: absolute; top: 6%; right: 3%; font-size: 8.7vw; color: #FFD700; text-shadow: 0 0 10px #FFD700; }
     #time-tv .date { position: absolute; top: 2%; right: 3.5%; font-size: 3vw; color: #FFE066; }
-    #overlay:focus { outline: 2px solid rgba(255,255,255,0.02); }
   </style>
 </head>
 <body>
   <div id="container">
     <div id="stream"></div>
     <video id="hls-video" playsinline></video>
-    <div id="time-tv"><div class="clock">00:00:00 AM</div><div class="date"></div></div>
+    <div id="time-tv"><div class="clock"></div><div class="date"></div></div>
     <div id="overlay" tabindex="0"></div>
-    <div id="channelName"></div>
+    <div id="channelName" class="style-main"></div>
     <div class="loading" id="loading"></div>
   </div>
 
@@ -77,10 +78,12 @@ const loadingIndicator = document.getElementById('loading');
 const OVERLAY = document.getElementById('overlay');
 
 let currentChannel = parseInt(localStorage.getItem('currentChannel')) || 0;
-let hideTimeout, hls, refreshTimer, loadTimeout;
-let lastScrollTime = 0; 
-const SCROLL_SPEED_MS = 350; 
+let streamToggle = 0; 
+let refreshTimer, loadTimeout, hideTimeout, hls;
+let lastScrollTime = 0;
+const SCROLL_SPEED_MS = 400;
 
+// YouTube API variables for Channel 1 Fallback
 let usingFallbackCh1 = false;
 let ytPlayerForCh1 = null;
 let fallbackCheckTimerCh1 = null;
@@ -92,113 +95,144 @@ window.onYouTubeIframeAPIReady = function() {
   if (pendingPlayerInitCh1) { initYouTubePlayerForCh1(); pendingPlayerInitCh1 = false; }
 };
 
-function loadChannel(index) {
+function loadChannel(index, toggle = 0) {
   localStorage.setItem('currentChannel', index);
   loadingIndicator.style.display = 'block';
   STREAM_DIV.style.display = 'none';
   HLS_VIDEO.style.display = 'none';
   TIME_TV.style.display = 'none';
   STREAM_DIV.innerHTML = '';
+  if (hls) { hls.destroy(); hls = null; }
   HLS_VIDEO.pause();
 
+  // Reset Ch1 logic on every switch
   usingFallbackCh1 = false;
   if (fallbackCheckTimerCh1) clearTimeout(fallbackCheckTimerCh1);
-  if (hls) { hls.destroy(); hls = null; }
   if (ytPlayerForCh1) { try { ytPlayerForCh1.destroy(); } catch(e){} ytPlayerForCh1 = null; }
 
   const channel = CHANNELS[index];
 
   if (channel.type === 'auto-live') {
     STREAM_DIV.style.display = 'block';
-    const iframe = document.createElement('iframe');
-    if (index === 0) iframe.id = 'ch1-iframe';
-    iframe.setAttribute('allow', 'autoplay; encrypted-media; fullscreen');
-    STREAM_DIV.appendChild(iframe);
-
     const rssUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${channel.channelId}`;
-    fetch(`https://api.jsonbin.io/v3/b/654a88f512a5d37659955e88`, { // Using a public mirror or rss2json
-        // Note: For production use https://api.rss2json.com/v1/api.json?rss_url=...
-    });
-    
-    // Direct Fetch via RSS2JSON (Most reliable for WebOS)
     fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`)
       .then(res => res.json())
       .then(data => {
-        let vidId = (data.items && data.items.length > 0) ? data.items[0].link.split('v=')[1] : `live_stream?channel=${channel.channelId}`;
-        iframe.src = `https://www.youtube.com/embed/${vidId}?autoplay=1&modestbranding=1&controls=0&rel=0&enablejsapi=1`;
-        if (index === 0) {
-          iframe.onload = () => { loadingIndicator.style.display = 'none'; setTimeout(() => { if (ytApiReady) initYouTubePlayerForCh1(); else pendingPlayerInitCh1 = true; }, 1000); };
+        let items = data.items || [];
+        let vidId;
+        let activeStyle = 0;
+        
+        if (toggle === 1 && items.length >= 2) {
+            const pubDate = new Date(items[1].pubDate).getTime();
+            const now = new Date().getTime();
+            const diffHours = (now - pubDate) / (1000 * 60 * 60);
+
+            if (diffHours < 12) {
+                vidId = items[1].link.split('v=')[1];
+                activeStyle = 1; // Alt style
+            } else {
+                vidId = items[0].link.split('v=')[1];
+                streamToggle = 0; // Force back to primary
+                activeStyle = 0;
+            }
         } else {
-          iframe.onload = () => loadingIndicator.style.display = 'none';
+            vidId = items.length > 0 ? items[0].link.split('v=')[1] : `live_stream?channel=${channel.channelId}`;
+            activeStyle = 0;
         }
+        
+        const iframe = document.createElement('iframe');
+        iframe.setAttribute('allow', 'autoplay; fullscreen');
+        iframe.src = `https://www.youtube.com/embed/${vidId}?autoplay=1&modestbranding=1&controls=0&rel=0&enablejsapi=1`;
+        
+        if (index === 0) {
+            iframe.id = 'ch1-iframe';
+            iframe.onload = () => {
+                loadingIndicator.style.display = 'none';
+                setTimeout(() => { if (ytApiReady) initYouTubePlayerForCh1(); else pendingPlayerInitCh1 = true; }, 1000);
+            };
+        } else {
+            iframe.onload = () => loadingIndicator.style.display = 'none';
+        }
+
+        STREAM_DIV.appendChild(iframe);
+        showChannelName(channel.name, activeStyle);
       })
       .catch(() => {
-        iframe.src = `https://www.youtube.com/embed/live_stream?channel=${channel.channelId}&autoplay=1&controls=0&enablejsapi=1`;
-        iframe.onload = () => loadingIndicator.style.display = 'none';
+        STREAM_DIV.innerHTML = `<iframe src="https://www.youtube.com/embed/live_stream?channel=${channel.channelId}&autoplay=1&controls=0" allow="autoplay; fullscreen"></iframe>`;
+        STREAM_DIV.querySelector('iframe').onload = () => loadingIndicator.style.display = 'none';
+        showChannelName(channel.name, 0);
       });
 
   } else if (channel.type === 'iframe') {
     STREAM_DIV.style.display = 'block';
-    const iframe = document.createElement('iframe');
-    iframe.src = channel.url;
-    iframe.setAttribute('allow', 'autoplay; encrypted-media; fullscreen');
-    iframe.onload = () => loadingIndicator.style.display = 'none';
-    STREAM_DIV.appendChild(iframe);
+    STREAM_DIV.innerHTML = `<iframe src="${channel.url}" allow="autoplay; fullscreen"></iframe>`;
+    STREAM_DIV.querySelector('iframe').onload = () => loadingIndicator.style.display = 'none';
+    showChannelName(channel.name, 0);
   } else if (channel.type === 'hls') {
     HLS_VIDEO.style.display = 'block';
     if (Hls.isSupported()) {
       hls = new Hls(); hls.loadSource(channel.url); hls.attachMedia(HLS_VIDEO);
       hls.on(Hls.Events.MANIFEST_PARSED, () => { HLS_VIDEO.play(); loadingIndicator.style.display = 'none'; });
     }
+    showChannelName(channel.name, 0);
   } else if (channel.type === 'time') {
     TIME_TV.style.display = 'block'; loadingIndicator.style.display = 'none';
+    showChannelName(channel.name, 0);
   }
-
-  showChannelName(channel.name);
   setupAutoRefresh();
 }
 
-function setupAutoRefresh() {
-  clearTimeout(refreshTimer);
-  refreshTimer = setTimeout(() => { window.location.reload(); }, 14400000); // 4 Hours
-}
-
-/* --- Rest of keyboard and logic remains same --- */
+/* Fallback Monitoring for Channel 1 Only */
 function initYouTubePlayerForCh1() {
   if (!ytApiReady || usingFallbackCh1) return;
   ytPlayerForCh1 = new YT.Player('ch1-iframe', { events: { onReady: onCh1Ready, onStateChange: onCh1StateChange, onError: onCh1Error } });
 }
-function onCh1Ready() { fallbackCheckTimerCh1 = setTimeout(() => { if (ytPlayerForCh1.getPlayerState() < 0) tryActivateFallbackCh1(); }, 20000); }
+function onCh1Ready() { fallbackCheckTimerCh1 = setTimeout(() => { if (ytPlayerForCh1 && ytPlayerForCh1.getPlayerState() < 0) tryActivateFallbackCh1(); }, 20000); }
 function onCh1StateChange(e) { if (e.data === 0) tryActivateFallbackCh1(); }
 function onCh1Error() { tryActivateFallbackCh1(); }
 function tryActivateFallbackCh1() {
   if (usingFallbackCh1) return; usingFallbackCh1 = true;
-  STREAM_DIV.innerHTML = `<iframe src="${CHANNELS[0].fallback}" allow="autoplay; encrypted-media; fullscreen"></iframe>`;
+  STREAM_DIV.innerHTML = `<iframe src="${CHANNELS[0].fallback}" allow="autoplay; fullscreen"></iframe>`;
 }
 
-function showChannelName(name) {
-  channelNameBox.textContent = name; channelNameBox.classList.add("show");
-  clearTimeout(hideTimeout); hideTimeout = setTimeout(() => channelNameBox.classList.remove("show"), 3000);
+function setupAutoRefresh() {
+  clearTimeout(refreshTimer);
+  refreshTimer = setTimeout(() => { window.location.reload(); }, 10800000); // 3 Hours
+}
+
+function showChannelName(name, styleType) {
+  channelNameBox.textContent = name;
+  channelNameBox.className = (styleType === 1) ? 'style-alt show' : 'style-main show';
+  clearTimeout(hideTimeout);
+  hideTimeout = setTimeout(() => channelNameBox.classList.remove("show"), 3500);
 }
 
 function queueChannelLoad(index) {
-  currentChannel = index; showChannelName(CHANNELS[index].name);
-  if (loadTimeout) clearTimeout(loadTimeout);
-  loadTimeout = setTimeout(() => { loadChannel(index); }, 600);
-}
+  const now = Date.now();
+  if (now - lastScrollTime < SCROLL_SPEED_MS) return;
+  lastScrollTime = now;
 
-function nextChannel() { const now = Date.now(); if (now - lastScrollTime < SCROLL_SPEED_MS) return; lastScrollTime = now; queueChannelLoad((currentChannel + 1) % CHANNELS.length); }
-function prevChannel() { const now = Date.now(); if (now - lastScrollTime < SCROLL_SPEED_MS) return; lastScrollTime = now; queueChannelLoad((currentChannel - 1 + CHANNELS.length) % CHANNELS.length); }
+  // EXCEPTION: Channel 1 (index 0) does NOT toggle Alt Stream
+  if (currentChannel === index && index !== 0) {
+    streamToggle = (streamToggle === 0) ? 1 : 0;
+  } else {
+    streamToggle = 0;
+  }
+  
+  currentChannel = index;
+  if (loadTimeout) clearTimeout(loadTimeout);
+  loadTimeout = setTimeout(() => { loadChannel(index, streamToggle); }, 500);
+}
 
 window.addEventListener('keydown', (e) => {
   const k = e.key;
-  if (["ArrowRight", "d", "ArrowUp", "PageUp"].includes(k)) { e.preventDefault(); nextChannel(); }
-  else if (["ArrowLeft", "a", "ArrowDown", "PageDown"].includes(k)) { e.preventDefault(); prevChannel(); }
+  if (["ArrowRight", "d", "ArrowUp"].includes(k)) { e.preventDefault(); queueChannelLoad((currentChannel + 1) % CHANNELS.length); }
+  else if (["ArrowLeft", "a", "ArrowDown"].includes(k)) { e.preventDefault(); queueChannelLoad((currentChannel - 1 + CHANNELS.length) % CHANNELS.length); }
   else if (/^[1-9]$/.test(k)) { e.preventDefault(); queueChannelLoad(parseInt(k) - 1); }
   else if (k === "0") { e.preventDefault(); queueChannelLoad(9); }
 });
 
-OVERLAY.addEventListener('click', nextChannel);
+OVERLAY.addEventListener('click', () => queueChannelLoad((currentChannel + 1) % CHANNELS.length));
 
 function updateLocalTime() {
   const now = new Date();
