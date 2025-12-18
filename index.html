@@ -23,12 +23,12 @@
     #channelName {
       position: absolute; bottom: -80px; left: 0; width: 100%;
       padding: 15px 20px; font-size: 24px; font-weight: bold;
-      text-align: center; opacity: 0; transition: all 0.5s ease; z-index: 3;
+      text-align: center; opacity: 0; transition: all 0.6s ease; z-index: 3;
     }
     /* Stream 1: Gold Text on Blue Background */
-    .style-main { background: rgba(0,41,107,0.85); color: #ffd500; }
-    /* Stream 2: Blue Text on Gold Background */
-    .style-alt { background: rgba(255, 215, 0, 0.95); color: #00296b; }
+    .style-main { background-color: rgba(0, 41, 107, 0.9) !important; color: #FFD700 !important; }
+    /* Stream 2: Deep Blue Text on Solid Gold Background */
+    .style-alt { background-color: #FFD700 !important; color: #00296B !important; }
     
     #channelName.show { bottom: 0; opacity: 1; }
     
@@ -84,7 +84,10 @@ let currentChannel = parseInt(localStorage.getItem('currentChannel')) || 0;
 let streamToggle = 0; 
 let refreshTimer, loadTimeout, hideTimeout, hls;
 let lastScrollTime = 0;
-const SCROLL_SPEED_MS = 400;
+
+// EXACT ORIGINAL SPEEDS
+const SCROLL_SPEED_MS = 350; 
+const LOAD_DELAY_MS = 600;
 
 let usingFallbackCh1 = false;
 let ytPlayerForCh1 = null;
@@ -204,31 +207,56 @@ function showChannelName(name, styleType) {
   channelNameBox.textContent = name;
   channelNameBox.className = (styleType === 1) ? 'style-alt show' : 'style-main show';
   clearTimeout(hideTimeout);
-  hideTimeout = setTimeout(() => channelNameBox.classList.remove("show"), 3500);
+  hideTimeout = setTimeout(() => channelNameBox.classList.remove("show"), 3000);
 }
 
 function queueChannelLoad(index) {
-  const now = Date.now();
-  if (now - lastScrollTime < SCROLL_SPEED_MS) return;
-  lastScrollTime = now;
-
-  if (currentChannel === index && index !== 0) {
+  const isSameChannel = (currentChannel === index);
+  
+  // Toggle stream only if clicking the same channel (excluding Channel 1)
+  if (isSameChannel && index !== 0) {
     streamToggle = (streamToggle === 0) ? 1 : 0;
   } else {
     streamToggle = 0;
   }
-  
+
   currentChannel = index;
+
+  // Immediate UI Update (Fast Scroll Feel)
+  showChannelName(CHANNELS[index].name, (isSameChannel ? streamToggle : 0));
+
+  // Delayed Video Load (Debounced)
   if (loadTimeout) clearTimeout(loadTimeout);
-  loadTimeout = setTimeout(() => { loadChannel(index, streamToggle); }, 500);
+  loadTimeout = setTimeout(() => { 
+    loadChannel(index, streamToggle); 
+  }, LOAD_DELAY_MS);
 }
 
 window.addEventListener('keydown', (e) => {
   const k = e.key;
-  if (["ArrowRight", "d", "ArrowUp"].includes(k)) { e.preventDefault(); queueChannelLoad((currentChannel + 1) % CHANNELS.length); }
-  else if (["ArrowLeft", "a", "ArrowDown"].includes(k)) { e.preventDefault(); queueChannelLoad((currentChannel - 1 + CHANNELS.length) % CHANNELS.length); }
-  else if (/^[1-9]$/.test(k)) { e.preventDefault(); queueChannelLoad(parseInt(k) - 1); }
-  else if (k === "0") { e.preventDefault(); queueChannelLoad(9); }
+  const c = e.keyCode;
+  const now = Date.now();
+
+  // Throttling inputs to keep names moving at the original pace
+  if (now - lastScrollTime < SCROLL_SPEED_MS) return;
+  lastScrollTime = now;
+
+  /* LG Remote Buttons (CH+/CH- and Arrows) */
+  if (k === "ArrowRight" || k === "ArrowUp" || k === "ChannelUp" || c === 427 || k === "PageUp" || c === 33) {
+    e.preventDefault();
+    queueChannelLoad((currentChannel + 1) % CHANNELS.length);
+  }
+  else if (k === "ArrowLeft" || k === "ArrowDown" || k === "ChannelDown" || c === 428 || k === "PageDown" || c === 34) {
+    e.preventDefault();
+    queueChannelLoad((currentChannel - 1 + CHANNELS.length) % CHANNELS.length);
+  }
+  else if (/^[1-9]$/.test(k)) {
+    e.preventDefault();
+    queueChannelLoad(parseInt(k, 10) - 1);
+  } else if (k === "0") {
+    e.preventDefault();
+    queueChannelLoad(9);
+  }
 });
 
 OVERLAY.addEventListener('click', () => queueChannelLoad((currentChannel + 1) % CHANNELS.length));
@@ -239,6 +267,7 @@ function updateLocalTime() {
   document.querySelector('#time-tv .date').textContent = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 }
 setInterval(updateLocalTime, 1000); updateLocalTime();
+
 loadChannel(currentChannel);
 </script>
 </body>
