@@ -132,7 +132,7 @@ const OVERLAY = document.getElementById('overlay');
 let currentChannel = parseInt(localStorage.getItem('currentChannel')) || 0;
 if (currentChannel < 0 || currentChannel >= CHANNELS.length) currentChannel = 0;
 
-let hideTimeout, hls, refreshTimer;
+let hideTimeout, hls;
 let loadTimeout; 
 let lastScrollTime = 0; 
 const SCROLL_SPEED_MS = 350; 
@@ -173,7 +173,6 @@ function loadChannel(index) {
     iframe.setAttribute('allow', 'autoplay; encrypted-media; fullscreen');
     STREAM_DIV.appendChild(iframe);
 
-    // Dynamic feed fetch to find the latest active video ID
     const rssUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${channel.channelId}`;
     fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`)
       .then(res => res.json())
@@ -225,11 +224,9 @@ function loadChannel(index) {
   }
 
   showChannelName(channel.name);
-  setupAutoRefresh();
   try { OVERLAY.focus({preventScroll: true}); } catch (e) { OVERLAY.focus(); }
 }
 
-/* --- Channel 1 logic remains the same --- */
 function loadChannel1WithFallback(channel) {
   STREAM_DIV.style.display = 'block';
   const iframe = document.createElement('iframe');
@@ -303,9 +300,13 @@ function showChannelName(name) {
   hideTimeout = setTimeout(() => channelNameBox.classList.remove("show"), 3000);
 }
 
+/* --- AUTO REFRESH LOGIC (3 HOURS) --- */
 function setupAutoRefresh() {
-  clearTimeout(refreshTimer);
-  // Auto-refresh removed as requested
+  // 3 hours = 10,800,000 milliseconds
+  const REFRESH_INTERVAL = 3 * 60 * 60 * 1000;
+  setTimeout(() => {
+    window.location.reload();
+  }, REFRESH_INTERVAL);
 }
 
 function queueChannelLoad(index) {
@@ -364,10 +365,11 @@ function updateLocalTime() {
   const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
   document.querySelector('#time-tv .date').textContent = now.toLocaleDateString('en-US', options);
 }
+// Initialization
 setInterval(updateLocalTime, 1000);
 updateLocalTime();
-
 loadChannel(currentChannel);
+setupAutoRefresh(); // Start the 3-hour timer
 </script>
 </body>
 </html>
