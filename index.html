@@ -92,6 +92,39 @@ let usingFallback = false;
 
 window.onYouTubeIframeAPIReady = function() { ytApiReady = true; };
 
+/**
+ * NEW: BACKGROUND LIVE SCANNER
+ * Only runs for Channels 2 & 4 to solve Multi-stream/Ended issues.
+ */
+async function fixLiveMultiStream(channelId) {
+    try {
+        const proxy = "https://api.allorigins.win/get?url=";
+        const target = encodeURIComponent(`https://www.youtube.com/channel/${channelId}/live`);
+        const res = await fetch(proxy + target);
+        const data = await res.json();
+        const html = data.contents;
+
+        // Regex to find active IDs with watcher counts
+        const regex = /"videoId":"([^"]+)".*?"text":"([\d,]+)"\},\{"text":" watching"/g;
+        let streams = [];
+        let match;
+
+        while ((match = regex.exec(html)) !== null) {
+            streams.push({ id: match[1], watchers: parseInt(match[2].replace(/,/g, '')) });
+        }
+
+        if (streams.length > 0) {
+            streams.sort((a, b) => b.watchers - a.watchers);
+            const bestId = streams[0].id;
+            const iframe = STREAM_DIV.querySelector('iframe');
+            // If we found a specific active ID, swap it to avoid "Unavailable"
+            if (iframe && !iframe.src.includes(bestId)) {
+                iframe.src = `https://www.youtube.com/embed/${bestId}?autoplay=1&modestbranding=1&controls=0&rel=0`;
+            }
+        }
+    } catch (e) { console.log("Background scanner skipped."); }
+}
+
 function loadChannel(index, toggle = 0) {
   localStorage.setItem('currentChannel', index);
   loadingIndicator.style.display = 'block';
@@ -110,7 +143,7 @@ function loadChannel(index, toggle = 0) {
 
   if (channel.type === 'multi-rss') {
     STREAM_DIV.style.display = 'block';
-    const rssUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent('https://www.youtube.com/feeds/videos.xml?channel_id=' + channel.channelId)}`;
+    const rssUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent('https://www.youtube.com/feeds/videos.xml?channel_id=' + channel.channelId)}&t=${Date.now()}`;
     
     fetch(rssUrl).then(res => res.json()).then(data => {
         let items = data.items || [];
@@ -121,6 +154,7 @@ function loadChannel(index, toggle = 0) {
             vidId = items[1].link.split('v=')[1];
             activeStyle = 1;
         } else {
+            // Default load
             vidId = items.length > 0 ? items[0].link.split('v=')[1] : `live_stream?channel=${channel.channelId}`;
             activeStyle = 0;
         }
@@ -128,6 +162,10 @@ function loadChannel(index, toggle = 0) {
         STREAM_DIV.innerHTML = `<iframe src="https://www.youtube.com/embed/${vidId}?autoplay=1&modestbranding=1&controls=0&rel=0" allow="autoplay; fullscreen"></iframe>`;
         STREAM_DIV.querySelector('iframe').onload = () => loadingIndicator.style.display = 'none';
         showChannelName(channel.name, activeStyle);
+
+        // RUN BACKGROUND CORRECTION FOR CH 2 & 4
+        if (index === 1 || index === 3) fixLiveMultiStream(channel.channelId);
+
     }).catch(() => loadDirect(channel));
 
   } else if (channel.type === 'direct') {
@@ -153,7 +191,7 @@ function loadChannel(index, toggle = 0) {
 
 function loadDirect(channel) {
     STREAM_DIV.style.display = 'block';
-    const embedUrl = `https://www.youtube.com/embed/live_stream?channel=${channel.channelId}&autoplay=1&modestbranding=1&controls=0&rel=0&enablejsapi=1`;
+    const embedUrl = `https://www.youtube.com/embed/live_stream?channel=${channel.channelId}&autoplay=1&modestbranding=1&controls=0&rel=0&enablejsapi=1&cb=${Date.now()}`;
     STREAM_DIV.innerHTML = `<iframe id="main-player" src="${embedUrl}" allow="autoplay; fullscreen"></iframe>`;
     STREAM_DIV.querySelector('iframe').onload = () => {
         loadingIndicator.style.display = 'none';
@@ -229,5 +267,3 @@ loadChannel(currentChannel);
 </script>
 </body>
 </html>
-
-
