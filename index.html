@@ -130,9 +130,7 @@ function loadChannel(index, toggle = 0) {
     
     if (toggle === 1) {
         // Toggle 1: 2nd Stream (Only for Ch 4)
-        // CHANGE: Just show name + color change (style 1), no extra text.
         showChannelName(channel.name, 1);
-        
         fetchLatestVideoId(channel.channelId, 1).then(vidId => {
              loadYoutubePlayer(vidId || `live_stream?channel=${channel.channelId}`, channel);
         });
@@ -186,7 +184,8 @@ function loadYoutubePlayer(videoIdOrParams, channelObj = null) {
                     },
                     'onError': (e) => {
                         console.log("Player Error detected: " + e.data);
-                        // AUTO-RESCUE LOGIC
+                        
+                        // 1. HYBRID AUTO-RESCUE (Ch 2 & 4)
                         if (channelObj && channelObj.type === 'hybrid') {
                             loadingIndicator.style.display = 'block'; 
                             fetchLatestVideoId(channelObj.channelId, 0).then(vidId => {
@@ -195,6 +194,12 @@ function loadYoutubePlayer(videoIdOrParams, channelObj = null) {
                                     loadingIndicator.style.display = 'none';
                                 }
                             });
+                        } 
+                        // 2. STANDARD FALLBACK (Restored for Ch 1)
+                        else if (channelObj && channelObj.fallback) {
+                             console.log("Switching to Fallback ID: " + channelObj.fallback);
+                             STREAM_DIV.innerHTML = `<iframe src="https://www.youtube.com/embed/${channelObj.fallback}?autoplay=1&modestbranding=1&controls=0" allow="autoplay; fullscreen"></iframe>`;
+                             loadingIndicator.style.display = 'none';
                         }
                     }
                 }
@@ -218,7 +223,7 @@ function showChannelName(name, styleType) {
 function queueChannelLoad(index) {
   const isSame = (currentChannel === index);
   const channel = CHANNELS[index];
-  // LOGIC: Only toggle if channel allows it (Channel 4)
+
   if (isSame && channel.type === 'hybrid' && channel.allowToggle) {
       streamToggle = (streamToggle === 0) ? 1 : 0;
   } else {
@@ -231,7 +236,7 @@ function queueChannelLoad(index) {
   if (loadTimeout) clearTimeout(loadTimeout);
   loadTimeout = setTimeout(() => { loadChannel(index, streamToggle); }, LOAD_DELAY_MS);
 }
-// Navigation Inputs
+
 window.addEventListener('keydown', (e) => {
   const k = e.key; const c = e.keyCode; const now = Date.now();
   if (now - lastScrollTime < SCROLL_SPEED_MS) return;
