@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -61,9 +61,9 @@
 // --- CONFIGURATION ---
 const CHANNELS = [
   { name: "1. ਪਟਨਾ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UC3nqw1kd4AK1q9e68YUoLDQ", fallback: "TTK7eNuI3M0", type: "direct" },
-  { name: "2. ਅੰਮ੍ਰਿਤਸਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCYn6UEtQ771a_OWSiNBoG8w", type: "smart-live" },
+  { name: "2. ਅੰਮ੍ਰਿਤਸਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCYn6UEtQ771a_OWSiNBoG8w", type: "hybrid" },
   { name: "3. ਬਾਬਾ ਦੀਪ ਸਿੰਘ ਜੀ ਅੰਮ੍ਰਿਤਸਰ ਸਾਹਿਬ", channelId: "UCxWx-MPft_7mKrFtN6uOaAA", type: "direct" },
-  { name: "4. ਫਤੇਹਗੜ੍ਹ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCudVHqnOekwcvpzNpY8_ERw", type: "smart-live" },
+  { name: "4. ਫਤੇਹਗੜ੍ਹ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCudVHqnOekwcvpzNpY8_ERw", type: "hybrid" },
   { name: "5. ਆਨੰਦਪੁਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCSx5035_us8h8DOp_YhQDaw", type: "direct" },
   { name: "6. ਦਮਦਮਾ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCY8jMpyRRcdzSf6uLiU6izQ", type: "direct" },
   { name: "7. ਹਜ਼ੂਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCuerQ47I9Y2qxr4eIopxbYw", type: "direct" },
@@ -86,24 +86,22 @@ let lastScrollTime = 0;
 const SCROLL_SPEED_MS = 350; 
 const LOAD_DELAY_MS = 600;
 let ytPlayer = null;
+let ytApiReady = false;
 
-// --- SCANNER LOGIC (Only runs when requested) ---
-async function fetchSecondaryStream(channelId) {
+window.onYouTubeIframeAPIReady = function() { ytApiReady = true; };
+
+// --- SCANNER (RSS BACKUP) ---
+// This is faster and safer than HTML proxy scraping
+async function fetchLatestVideoId(channelId, offset = 0) {
     try {
-        const proxy = "https://api.allorigins.win/get?url=";
-        const target = encodeURIComponent(`https://www.youtube.com/channel/${channelId}/streams`);
-        const res = await fetch(proxy + target);
+        const rssUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent('https://www.youtube.com/feeds/videos.xml?channel_id=' + channelId)}&t=${Date.now()}`;
+        const res = await fetch(rssUrl);
         const data = await res.json();
-        const html = data.contents;
-        const regex = /"videoId":"([^"]+)".*?"text":"([\d,]+)"\},\{"text":" watching"/g;
-        let streams = [];
-        let match;
-        while ((match = regex.exec(html)) !== null) {
-            streams.push({ id: match[1], watchers: parseInt(match[2].replace(/,/g, '')) });
+        const items = data.items || [];
+        if (items.length > offset) {
+            return items[offset].link.split('v=')[1];
         }
-        streams.sort((a, b) => b.watchers - a.watchers);
-        // Return 2nd stream if exists, else null
-        return (streams.length >= 2) ? streams[1].id : null;
+        return null;
     } catch (e) {
         return null;
     }
@@ -117,7 +115,6 @@ function loadChannel(index, toggle = 0) {
   TIME_TV.style.display = 'none';
   STREAM_DIV.innerHTML = '';
   
-  // Cleanup
   if (hls) { hls.destroy(); hls = null; }
   HLS_VIDEO.pause();
   if (safetyTimer) clearTimeout(safetyTimer);
@@ -125,30 +122,29 @@ function loadChannel(index, toggle = 0) {
 
   const channel = CHANNELS[index];
 
-  // --- SAFETY TIMEOUT: Forces spinner to hide after 6 seconds max ---
-  safetyTimer = setTimeout(() => { loadingIndicator.style.display = 'none'; }, 6000);
+  // --- FORCE LOADER HIDE (2.5s) ---
+  // Prevents the "infinite circle" bug.
+  safetyTimer = setTimeout(() => { loadingIndicator.style.display = 'none'; }, 2500);
 
-  if (channel.type === 'smart-live' && toggle === 1) {
-    // --- MODE 2: SECONDARY STREAM (Scanner) ---
+  if (channel.type === 'hybrid') {
+    // --- HYBRID LOGIC ---
     STREAM_DIV.style.display = 'block';
-    showChannelName(channel.name + " (Scanning...)", 1);
     
-    fetchSecondaryStream(channel.channelId).then(vidId => {
-        if (vidId) {
-            loadYoutubePlayer(vidId, null);
-            showChannelName(channel.name + " (Feed 2)", 1);
-        } else {
-            // If scan fails, silently revert to main feed
-            loadYoutubePlayer(`live_stream?channel=${channel.channelId}`, null);
-            showChannelName(channel.name + " (Main)", 0);
-        }
-    });
+    if (toggle === 1) {
+        // Feed 2: Fetch via RSS (Latest video which is usually the live stream)
+        showChannelName(channel.name + " (Feed 2)", 1);
+        fetchLatestVideoId(channel.channelId, 1).then(vidId => { // Offset 1 = 2nd video
+             loadYoutubePlayer(vidId || `live_stream?channel=${channel.channelId}`, channel);
+        });
+    } else {
+        // Feed 1: Try Direct Link first. If it fails, Scanner takes over.
+        showChannelName(channel.name, 0);
+        loadYoutubePlayer(`live_stream?channel=${channel.channelId}`, channel);
+    }
 
-  } else if (channel.type === 'direct' || channel.type === 'smart-live') {
-    // --- MODE 1: DIRECT (Instant Load) ---
+  } else if (channel.type === 'direct') {
     STREAM_DIV.style.display = 'block';
-    // This URL is magic: it ALWAYS redirects to the live stream. No scanning needed.
-    loadYoutubePlayer(`live_stream?channel=${channel.channelId}`, channel.fallback);
+    loadYoutubePlayer(`live_stream?channel=${channel.channelId}`, channel);
     showChannelName(channel.name, 0);
 
   } else if (channel.type === 'iframe') {
@@ -162,7 +158,7 @@ function loadChannel(index, toggle = 0) {
     if (Hls.isSupported()) {
       hls = new Hls(); hls.loadSource(channel.url); hls.attachMedia(HLS_VIDEO);
       hls.on(Hls.Events.MANIFEST_PARSED, () => { HLS_VIDEO.play(); loadingIndicator.style.display = 'none'; });
-      hls.on(Hls.Events.ERROR, () => { loadingIndicator.style.display = 'none'; });
+      hls.on(Hls.Events.ERROR, () => loadingIndicator.style.display = 'none');
     }
     showChannelName(channel.name, 0);
 
@@ -173,35 +169,40 @@ function loadChannel(index, toggle = 0) {
   setupAutoRefresh();
 }
 
-function loadYoutubePlayer(videoIdOrParams, fallbackId) {
+function loadYoutubePlayer(videoIdOrParams, channelObj = null) {
     let srcUrl = videoIdOrParams.includes('channel=') 
         ? `https://www.youtube.com/embed/${videoIdOrParams}&autoplay=1&modestbranding=1&controls=0&rel=0&enablejsapi=1`
         : `https://www.youtube.com/embed/${videoIdOrParams}?autoplay=1&modestbranding=1&controls=0&rel=0&enablejsapi=1`;
 
     STREAM_DIV.innerHTML = `<iframe id="main-player" src="${srcUrl}" allow="autoplay; fullscreen"></iframe>`;
 
-    // Wait for iframe load event to kill spinner (Simple & Reliable)
-    STREAM_DIV.querySelector('iframe').onload = () => {
-        loadingIndicator.style.display = 'none';
-    };
-
-    // Optional: Add API hook for "Video Unavailable" detection
+    // Wait for API to hook events
     setTimeout(() => {
         if (window.YT && YT.Player) {
-            try {
-                new YT.Player('main-player', {
-                    events: {
-                        'onError': () => { 
-                             if(fallbackId) {
-                                 console.log("Error detected, switching fallback");
-                                 STREAM_DIV.innerHTML = `<iframe src="https://www.youtube.com/embed/${fallbackId}?autoplay=1&modestbranding=1&controls=0" allow="autoplay; fullscreen"></iframe>`;
-                             }
+            ytPlayer = new YT.Player('main-player', {
+                events: {
+                    'onReady': (e) => { 
+                        loadingIndicator.style.display = 'none'; 
+                        e.target.playVideo(); 
+                    },
+                    'onError': (e) => {
+                        console.log("Player Error detected: " + e.data);
+                        // AUTO-RESCUE: If direct link fails, fetch the actual ID
+                        if (channelObj && channelObj.type === 'hybrid') {
+                            loadingIndicator.style.display = 'block'; // Show loader briefly
+                            fetchLatestVideoId(channelObj.channelId, 0).then(vidId => {
+                                if(vidId) {
+                                    // Reload player with specific ID (Fixes "Unavailable")
+                                    STREAM_DIV.innerHTML = `<iframe src="https://www.youtube.com/embed/${vidId}?autoplay=1&modestbranding=1&controls=0" allow="autoplay; fullscreen"></iframe>`;
+                                    loadingIndicator.style.display = 'none';
+                                }
+                            });
                         }
                     }
-                });
-            } catch(e) {}
+                }
+            });
         }
-    }, 1000);
+    }, 500);
 }
 
 function setupAutoRefresh() {
@@ -220,8 +221,8 @@ function queueChannelLoad(index) {
   const isSame = (currentChannel === index);
   const channel = CHANNELS[index];
 
-  // Toggle Logic: Only for smart-live channels
-  if (isSame && channel.type === 'smart-live') {
+  // Toggle Logic: Only for hybrid channels
+  if (isSame && channel.type === 'hybrid') {
       streamToggle = (streamToggle === 0) ? 1 : 0;
   } else {
       streamToggle = 0;
@@ -260,5 +261,5 @@ setInterval(updateLocalTime, 1000); updateLocalTime();
 loadChannel(currentChannel);
 </script>
 </body>
-</html>
-
+ </html>
+ 
