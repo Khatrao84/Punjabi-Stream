@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Punjabi Stream Pro</title>
+  <title>Punjabi Stream</title>
   <link rel="icon" href="https://i.postimg.cc/FRDPFKpY/favicon-96x96.png" type="image/png">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Gurmukhi:wght@400;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
@@ -21,36 +21,30 @@
     #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; cursor: pointer; outline: none; }
     
     #channelName {
-      position: absolute; bottom: -100px; left: 0; width: 100%;
-      padding: 20px; font-size: 28px; font-weight: bold;
-      text-align: center; opacity: 0; transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 5;
+      position: absolute; bottom: -80px; left: 0; width: 100%;
+      padding: 15px 20px; font-size: 24px; font-weight: bold;
+      text-align: center; opacity: 0; transition: all 0.6s ease; z-index: 3;
     }
-    .style-main { background: linear-gradient(0deg, rgba(0,41,107,1) 0%, rgba(0,41,107,0.8) 100%); color: #FFD700; border-top: 3px solid #FFD700; }
-    .style-alt { background: linear-gradient(0deg, rgba(255,215,0,1) 0%, rgba(255,215,0,0.8) 100%); color: #00296B; border-top: 3px solid #00296B; }
+    .style-main { background-color: rgba(0, 41, 107, 0.9) !important; color: #FFD700 !important; }
+    .style-alt { background-color: #FFD700 !important; color: #00296B !important; }
     
     #channelName.show { bottom: 0; opacity: 1; }
     
     .loading {
       position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      width: 60px; height: 60px; border: 5px solid rgba(255, 215, 0, 0.1);
-      border-radius: 50%; border-top-color: #ffd700;
-      animation: spin 1s linear infinite; z-index: 10; display: none;
+      width: 60px; height: 60px; border: 6px solid rgba(255, 213, 0, 0.2);
+      border-radius: 50%; border-top-color: #ffd500;
+      animation: spin 1s linear infinite; z-index: 4; display: none;
     }
     @keyframes spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
-
-    #live-indicator {
-      position: absolute; top: 20px; left: 20px; padding: 5px 12px;
-      background: red; color: white; font-size: 14px; font-weight: bold;
-      border-radius: 4px; z-index: 6; display: none; text-transform: uppercase;
-    }
     
     #time-tv {
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
       display: none; z-index: 1; background: url("https://i.postimg.cc/053WPD28/haarimandr.png") no-repeat center center;
-      background-size: cover;
+      background-size: cover; font-family: "Arial Black", sans-serif;
     }
-    #time-tv .clock { position: absolute; top: 6%; right: 3%; font-size: 8.5vw; color: #FFD700; text-shadow: 2px 2px 15px rgba(0,0,0,0.5); font-weight: 900; }
-    #time-tv .date { position: absolute; top: 2.5%; right: 3.5%; font-size: 2.8vw; color: #FFE066; font-weight: bold; }
+    #time-tv .clock { position: absolute; top: 6%; right: 3%; font-size: 8.7vw; color: #FFD700; text-shadow: 0 0 10px #FFD700; }
+    #time-tv .date { position: absolute; top: 2%; right: 3.5%; font-size: 3vw; color: #FFE066; }
   </style>
 </head>
 <body>
@@ -60,15 +54,14 @@
     <div id="time-tv"><div class="clock"></div><div class="date"></div></div>
     <div id="overlay" tabindex="0"></div>
     <div id="channelName" class="style-main"></div>
-    <div id="live-indicator">● LIVE</div>
     <div class="loading" id="loading"></div>
   </div>
 
 <script>
 const CHANNELS = [
-  { name: "1. ਪਟਨਾ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UC3nqw1kd4AK1q9e68YUoLDQ", type: "direct" },
+  { name: "1. ਪਟਨਾ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UC3nqw1kd4AK1q9e68YUoLDQ", fallback: "TTK7eNuI3M0", type: "direct" },
   { name: "2. ਅੰਮ੍ਰਿਤਸਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCYn6UEtQ771a_OWSiNBoG8w", type: "multi-rss" },
-  { name: "3. ਬਾਬਾ ਦੀਪ ਸਿੰਘ ਜੀ ਲਾਈਵ", channelId: "UCxWx-MPft_7mKrFtN6uOaAA", type: "direct" },
+  { name: "3. ਬਾਬਾ ਦੀਪ ਸਿੰਘ ਜੀ ਅੰਮ੍ਰਿਤਸਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCxWx-MPft_7mKrFtN6uOaAA", type: "direct" },
   { name: "4. ਫਤੇਹਗੜ੍ਹ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCudVHqnOekwcvpzNpY8_ERw", type: "multi-rss" },
   { name: "5. ਆਨੰਦਪੁਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCSx5035_us8h8DOp_YhQDaw", type: "direct" },
   { name: "6. ਦਮਦਮਾ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCY8jMpyRRcdzSf6uLiU6izQ", type: "direct" },
@@ -83,49 +76,58 @@ const HLS_VIDEO = document.getElementById('hls-video');
 const TIME_TV = document.getElementById('time-tv');
 const channelNameBox = document.getElementById('channelName');
 const loadingIndicator = document.getElementById('loading');
-const liveIndicator = document.getElementById('live-indicator');
 const OVERLAY = document.getElementById('overlay');
 
 let currentChannel = parseInt(localStorage.getItem('currentChannel')) || 0;
 let streamToggle = 0; 
 let refreshTimer, loadTimeout, hideTimeout, hls;
 let lastScrollTime = 0;
-const SCROLL_SPEED_MS = 400; 
+const SCROLL_SPEED_MS = 350; 
+const LOAD_DELAY_MS = 600;
 
-/**
- * Background Scanner
- */
+let ytPlayer = null;
+let fallbackTimer = null;
+let ytApiReady = false;
+let usingFallback = false;
+
+window.onYouTubeIframeAPIReady = function() { ytApiReady = true; };
+
 async function fixLiveMultiStream(channelId) {
     try {
         const proxy = "https://api.allorigins.win/get?url=";
         const target = encodeURIComponent(`https://www.youtube.com/channel/${channelId}/live`);
         const res = await fetch(proxy + target);
         const data = await res.json();
-        const idMatch = data.contents.match(/"videoId":"([^"]+)"/);
-        const isLive = data.contents.includes('style":"LIVE"');
-
-        if (idMatch && isLive) {
-            const bestId = idMatch[1];
+        const html = data.contents;
+        const regex = /"videoId":"([^"]+)".*?"text":"([\d,]+)"\},\{"text":" watching"/g;
+        let streams = [];
+        let match;
+        while ((match = regex.exec(html)) !== null) {
+            streams.push({ id: match[1], watchers: parseInt(match[2].replace(/,/g, '')) });
+        }
+        if (streams.length > 0) {
+            streams.sort((a, b) => b.watchers - a.watchers);
+            const bestId = streams[0].id;
             const iframe = STREAM_DIV.querySelector('iframe');
             if (iframe && !iframe.src.includes(bestId)) {
                 iframe.src = `https://www.youtube.com/embed/${bestId}?autoplay=1&modestbranding=1&controls=0&rel=0`;
-                liveIndicator.style.display = 'block';
             }
         }
-    } catch (e) { console.warn("Scanner skipped."); }
+    } catch (e) { console.log("Background scanner skipped."); }
 }
 
 function loadChannel(index, toggle = 0) {
   localStorage.setItem('currentChannel', index);
   loadingIndicator.style.display = 'block';
-  liveIndicator.style.display = 'none';
   STREAM_DIV.style.display = 'none';
   HLS_VIDEO.style.display = 'none';
   TIME_TV.style.display = 'none';
-  
+  STREAM_DIV.innerHTML = '';
   if (hls) { hls.destroy(); hls = null; }
   HLS_VIDEO.pause();
-  STREAM_DIV.innerHTML = '';
+  if (fallbackTimer) clearTimeout(fallbackTimer);
+  if (ytPlayer) { try { ytPlayer.destroy(); } catch(e){} ytPlayer = null; }
+  usingFallback = false;
 
   const channel = CHANNELS[index];
 
@@ -135,83 +137,111 @@ function loadChannel(index, toggle = 0) {
     
     fetch(rssUrl).then(res => res.json()).then(data => {
         let items = data.items || [];
-        // Only allow toggle for Channel 4 (Index 3)
-        let vidId = (index === 3 && toggle === 1 && items.length >= 2) ? items[1].link.split('v=')[1] : (items[0] ? items[0].link.split('v=')[1] : null);
+        let vidId = "";
+        let activeStyle = 0;
+
+        // Logic check: only use items[1] if it is Channel 4 (Index 3)
+        if (index === 3 && toggle === 1 && items.length >= 2) {
+            vidId = items[1].link.split('v=')[1];
+            activeStyle = 1;
+        } else {
+            vidId = items.length > 0 ? items[0].link.split('v=')[1] : `live_stream?channel=${channel.channelId}`;
+            activeStyle = 0;
+        }
         
-        const finalUrl = vidId ? `https://www.youtube.com/embed/${vidId}?autoplay=1&modestbranding=1&controls=0&rel=0` : `https://www.youtube.com/embed/live_stream?channel=${channel.channelId}&autoplay=1&modestbranding=1&controls=0`;
-        
-        STREAM_DIV.innerHTML = `<iframe src="${finalUrl}" allow="autoplay; fullscreen"></iframe>`;
-        STREAM_DIV.querySelector('iframe').onload = () => {
-            loadingIndicator.style.display = 'none';
-            fixLiveMultiStream(channel.channelId);
-        };
-        showChannelName(channel.name, (index === 3 ? toggle : 0));
-    });
+        STREAM_DIV.innerHTML = `<iframe src="https://www.youtube.com/embed/${vidId}?autoplay=1&modestbranding=1&controls=0&rel=0" allow="autoplay; fullscreen"></iframe>`;
+        STREAM_DIV.querySelector('iframe').onload = () => loadingIndicator.style.display = 'none';
+        showChannelName(channel.name, activeStyle);
+
+        if (index === 1 || index === 3) fixLiveMultiStream(channel.channelId);
+    }).catch(() => loadDirect(channel));
 
   } else if (channel.type === 'direct') {
-    STREAM_DIV.style.display = 'block';
-    STREAM_DIV.innerHTML = `<iframe src="https://www.youtube.com/embed/live_stream?channel=${channel.channelId}&autoplay=1&modestbranding=1&controls=0" allow="autoplay; fullscreen"></iframe>`;
-    STREAM_DIV.querySelector('iframe').onload = () => loadingIndicator.style.display = 'none';
-    showChannelName(channel.name, 0);
-
-  } else if (channel.type === 'hls') {
-    HLS_VIDEO.style.display = 'block';
-    if (Hls.isSupported()) {
-      hls = new Hls({ recoverDecodingError: true }); 
-      hls.loadSource(channel.url); hls.attachMedia(HLS_VIDEO);
-      hls.on(Hls.Events.MANIFEST_PARSED, () => { HLS_VIDEO.play(); loadingIndicator.style.display = 'none'; });
-    }
-    showChannelName(channel.name, 0);
-
+    loadDirect(channel);
   } else if (channel.type === 'iframe') {
     STREAM_DIV.style.display = 'block';
     STREAM_DIV.innerHTML = `<iframe src="${channel.url}" allow="autoplay; fullscreen"></iframe>`;
     STREAM_DIV.querySelector('iframe').onload = () => loadingIndicator.style.display = 'none';
     showChannelName(channel.name, 0);
-
+  } else if (channel.type === 'hls') {
+    HLS_VIDEO.style.display = 'block';
+    if (Hls.isSupported()) {
+      hls = new Hls(); hls.loadSource(channel.url); hls.attachMedia(HLS_VIDEO);
+      hls.on(Hls.Events.MANIFEST_PARSED, () => { HLS_VIDEO.play(); loadingIndicator.style.display = 'none'; });
+    }
+    showChannelName(channel.name, 0);
   } else if (channel.type === 'time') {
-    TIME_TV.style.display = 'block'; 
-    loadingIndicator.style.display = 'none';
+    TIME_TV.style.display = 'block'; loadingIndicator.style.display = 'none';
     showChannelName(channel.name, 0);
   }
+  setupAutoRefresh();
+}
+
+function loadDirect(channel) {
+    STREAM_DIV.style.display = 'block';
+    const embedUrl = `https://www.youtube.com/embed/live_stream?channel=${channel.channelId}&autoplay=1&modestbranding=1&controls=0&rel=0&enablejsapi=1&cb=${Date.now()}`;
+    STREAM_DIV.innerHTML = `<iframe id="main-player" src="${embedUrl}" allow="autoplay; fullscreen"></iframe>`;
+    STREAM_DIV.querySelector('iframe').onload = () => {
+        loadingIndicator.style.display = 'none';
+        if (ytApiReady && channel.fallback) initFallback(channel.fallback);
+    };
+    showChannelName(channel.name, 0);
+}
+
+function initFallback(fId) {
+  ytPlayer = new YT.Player('main-player', { events: {
+    'onReady': () => { 
+        fallbackTimer = setTimeout(() => { 
+          if (ytPlayer.getPlayerState() < 0 || ytPlayer.getPlayerState() === 0) triggerFallback(fId); 
+        }, 15000); 
+    },
+    'onStateChange': (e) => { if (e.data === 0) triggerFallback(fId); },
+    'onError': () => triggerFallback(fId)
+  }});
+}
+
+function triggerFallback(id) { 
+    if (usingFallback || !id) return;
+    usingFallback = true;
+    STREAM_DIV.innerHTML = `<iframe src="https://www.youtube.com/embed/${id}?autoplay=1&modestbranding=1&controls=0" allow="autoplay; fullscreen"></iframe>`; 
+}
+
+function setupAutoRefresh() {
+  clearTimeout(refreshTimer);
+  refreshTimer = setTimeout(() => { window.location.reload(); }, 10800000); 
 }
 
 function showChannelName(name, styleType) {
   channelNameBox.textContent = name;
   channelNameBox.className = (styleType === 1) ? 'style-alt show' : 'style-main show';
   clearTimeout(hideTimeout);
-  hideTimeout = setTimeout(() => channelNameBox.classList.remove("show"), 3500);
+  hideTimeout = setTimeout(() => channelNameBox.classList.remove("show"), 3000);
 }
 
 function queueChannelLoad(index) {
   const isSame = (currentChannel === index);
-  
-  // LOGIC CHANGE: Only toggle if index is 3 (Channel 4)
-  if (isSame && index === 3) {
-    streamToggle = (streamToggle === 0) ? 1 : 0;
-  } else {
-    streamToggle = 0;
-  }
+  // Change: Toggle only for index 3 (Channel 4)
+  if (isSame && index === 3) streamToggle = (streamToggle === 0) ? 1 : 0;
+  else streamToggle = 0;
   
   currentChannel = index;
-  showChannelName(CHANNELS[index].name, streamToggle);
-  
+  showChannelName(CHANNELS[index].name, (isSame && index === 3 ? streamToggle : 0));
   if (loadTimeout) clearTimeout(loadTimeout);
-  loadTimeout = setTimeout(() => { loadChannel(index, streamToggle); }, 500);
+  loadTimeout = setTimeout(() => { loadChannel(index, streamToggle); }, LOAD_DELAY_MS);
 }
 
 window.addEventListener('keydown', (e) => {
-  const k = e.key; const now = Date.now();
+  const k = e.key; const c = e.keyCode; const now = Date.now();
   if (now - lastScrollTime < SCROLL_SPEED_MS) return;
   lastScrollTime = now;
-  
-  if (["ArrowRight", "ArrowUp", "PageUp", "ChannelUp"].includes(k)) {
-    queueChannelLoad((currentChannel + 1) % CHANNELS.length);
-  } else if (["ArrowLeft", "ArrowDown", "PageDown", "ChannelDown"].includes(k)) {
-    queueChannelLoad((currentChannel - 1 + CHANNELS.length) % CHANNELS.length);
-  } else if (/^[0-9]$/.test(k)) {
-    const target = k === "0" ? 9 : parseInt(k) - 1;
-    queueChannelLoad(target);
+  if (k === "ArrowRight" || k === "ArrowUp" || k === "ChannelUp" || c === 427 || k === "PageUp" || c === 33) {
+    e.preventDefault(); queueChannelLoad((currentChannel + 1) % CHANNELS.length);
+  } else if (k === "ArrowLeft" || k === "ArrowDown" || k === "ChannelDown" || c === 428 || k === "PageDown" || c === 34) {
+    e.preventDefault(); queueChannelLoad((currentChannel - 1 + CHANNELS.length) % CHANNELS.length);
+  } else if (/^[1-9]$/.test(k)) {
+    e.preventDefault(); queueChannelLoad(parseInt(k, 10) - 1);
+  } else if (k === "0") {
+    e.preventDefault(); queueChannelLoad(9);
   }
 });
 
@@ -219,12 +249,10 @@ OVERLAY.addEventListener('click', () => queueChannelLoad((currentChannel + 1) % 
 
 function updateLocalTime() {
   const now = new Date();
-  document.querySelector('.clock').textContent = now.toLocaleTimeString('en-US', { hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  document.querySelector('.date').textContent = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  document.querySelector('#time-tv .clock').textContent = now.toLocaleTimeString('en-US', { hour12: true });
+  document.querySelector('#time-tv .date').textContent = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 }
-
-setInterval(updateLocalTime, 1000); 
-updateLocalTime();
+setInterval(updateLocalTime, 1000); updateLocalTime();
 loadChannel(currentChannel);
 </script>
 </body>
