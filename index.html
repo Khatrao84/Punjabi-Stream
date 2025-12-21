@@ -61,9 +61,11 @@
 // --- CONFIGURATION ---
 const CHANNELS = [
   { name: "1. ਪਟਨਾ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UC3nqw1kd4AK1q9e68YUoLDQ", fallback: "TTK7eNuI3M0", type: "direct" },
+  // Ch 2: Hybrid type (fixes errors) but allowToggle is missing, so it behaves like a normal channel
   { name: "2. ਅੰਮ੍ਰਿਤਸਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCYn6UEtQ771a_OWSiNBoG8w", type: "hybrid" },
   { name: "3. ਬਾਬਾ ਦੀਪ ਸਿੰਘ ਜੀ ਅੰਮ੍ਰਿਤਸਰ ਸਾਹਿਬ", channelId: "UCxWx-MPft_7mKrFtN6uOaAA", type: "direct" },
-  { name: "4. ਫਤੇਹਗੜ੍ਹ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCudVHqnOekwcvpzNpY8_ERw", type: "hybrid" },
+  // Ch 4: Hybrid type AND allowToggle is true (Press 4 again to switch streams)
+  { name: "4. ਫਤੇਹਗੜ੍ਹ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCudVHqnOekwcvpzNpY8_ERw", type: "hybrid", allowToggle: true },
   { name: "5. ਆਨੰਦਪੁਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCSx5035_us8h8DOp_YhQDaw", type: "direct" },
   { name: "6. ਦਮਦਮਾ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCY8jMpyRRcdzSf6uLiU6izQ", type: "direct" },
   { name: "7. ਹਜ਼ੂਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCuerQ47I9Y2qxr4eIopxbYw", type: "direct" },
@@ -90,8 +92,7 @@ let ytApiReady = false;
 
 window.onYouTubeIframeAPIReady = function() { ytApiReady = true; };
 
-// --- SCANNER (RSS BACKUP) ---
-// This is faster and safer than HTML proxy scraping
+// --- RSS SCANNER (Auto-Rescue) ---
 async function fetchLatestVideoId(channelId, offset = 0) {
     try {
         const rssUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent('https://www.youtube.com/feeds/videos.xml?channel_id=' + channelId)}&t=${Date.now()}`;
@@ -122,8 +123,7 @@ function loadChannel(index, toggle = 0) {
 
   const channel = CHANNELS[index];
 
-  // --- FORCE LOADER HIDE (2.5s) ---
-  // Prevents the "infinite circle" bug.
+  // FORCE HIDE LOADER (2.5s Safety)
   safetyTimer = setTimeout(() => { loadingIndicator.style.display = 'none'; }, 2500);
 
   if (channel.type === 'hybrid') {
@@ -131,13 +131,13 @@ function loadChannel(index, toggle = 0) {
     STREAM_DIV.style.display = 'block';
     
     if (toggle === 1) {
-        // Feed 2: Fetch via RSS (Latest video which is usually the live stream)
+        // Toggle 1: Explicitly fetch 2nd stream (Only works if allowToggle is true)
         showChannelName(channel.name + " (Feed 2)", 1);
-        fetchLatestVideoId(channel.channelId, 1).then(vidId => { // Offset 1 = 2nd video
+        fetchLatestVideoId(channel.channelId, 1).then(vidId => {
              loadYoutubePlayer(vidId || `live_stream?channel=${channel.channelId}`, channel);
         });
     } else {
-        // Feed 1: Try Direct Link first. If it fails, Scanner takes over.
+        // Toggle 0: Main Stream (Direct Link -> Auto Rescue)
         showChannelName(channel.name, 0);
         loadYoutubePlayer(`live_stream?channel=${channel.channelId}`, channel);
     }
@@ -176,7 +176,6 @@ function loadYoutubePlayer(videoIdOrParams, channelObj = null) {
 
     STREAM_DIV.innerHTML = `<iframe id="main-player" src="${srcUrl}" allow="autoplay; fullscreen"></iframe>`;
 
-    // Wait for API to hook events
     setTimeout(() => {
         if (window.YT && YT.Player) {
             ytPlayer = new YT.Player('main-player', {
@@ -187,12 +186,11 @@ function loadYoutubePlayer(videoIdOrParams, channelObj = null) {
                     },
                     'onError': (e) => {
                         console.log("Player Error detected: " + e.data);
-                        // AUTO-RESCUE: If direct link fails, fetch the actual ID
+                        // AUTO-RESCUE LOGIC
                         if (channelObj && channelObj.type === 'hybrid') {
-                            loadingIndicator.style.display = 'block'; // Show loader briefly
+                            loadingIndicator.style.display = 'block'; 
                             fetchLatestVideoId(channelObj.channelId, 0).then(vidId => {
                                 if(vidId) {
-                                    // Reload player with specific ID (Fixes "Unavailable")
                                     STREAM_DIV.innerHTML = `<iframe src="https://www.youtube.com/embed/${vidId}?autoplay=1&modestbranding=1&controls=0" allow="autoplay; fullscreen"></iframe>`;
                                     loadingIndicator.style.display = 'none';
                                 }
@@ -221,8 +219,9 @@ function queueChannelLoad(index) {
   const isSame = (currentChannel === index);
   const channel = CHANNELS[index];
 
-  // Toggle Logic: Only for hybrid channels
-  if (isSame && channel.type === 'hybrid') {
+  // LOGIC FIX: Check "allowToggle" property
+  // Only Channel 4 has allowToggle=true, so only it will switch streams.
+  if (isSame && channel.type === 'hybrid' && channel.allowToggle) {
       streamToggle = (streamToggle === 0) ? 1 : 0;
   } else {
       streamToggle = 0;
@@ -261,5 +260,5 @@ setInterval(updateLocalTime, 1000); updateLocalTime();
 loadChannel(currentChannel);
 </script>
 </body>
- </html>
- 
+</html>
+
