@@ -61,10 +61,8 @@
 // --- CONFIGURATION ---
 const CHANNELS = [
   { name: "1. ਪਟਨਾ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UC3nqw1kd4AK1q9e68YUoLDQ", fallback: "TTK7eNuI3M0", type: "direct" },
-  // Ch 2: Hybrid type (fixes errors) but allowToggle is missing, so it behaves like a normal channel
   { name: "2. ਅੰਮ੍ਰਿਤਸਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCYn6UEtQ771a_OWSiNBoG8w", type: "hybrid" },
   { name: "3. ਬਾਬਾ ਦੀਪ ਸਿੰਘ ਜੀ ਅੰਮ੍ਰਿਤਸਰ ਸਾਹਿਬ", channelId: "UCxWx-MPft_7mKrFtN6uOaAA", type: "direct" },
-  // Ch 4: Hybrid type AND allowToggle is true (Press 4 again to switch streams)
   { name: "4. ਫਤੇਹਗੜ੍ਹ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCudVHqnOekwcvpzNpY8_ERw", type: "hybrid", allowToggle: true },
   { name: "5. ਆਨੰਦਪੁਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCSx5035_us8h8DOp_YhQDaw", type: "direct" },
   { name: "6. ਦਮਦਮਾ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCY8jMpyRRcdzSf6uLiU6izQ", type: "direct" },
@@ -131,13 +129,15 @@ function loadChannel(index, toggle = 0) {
     STREAM_DIV.style.display = 'block';
     
     if (toggle === 1) {
-        // Toggle 1: Explicitly fetch 2nd stream (Only works if allowToggle is true)
-        showChannelName(channel.name + " (Feed 2)", 1);
+        // Toggle 1: 2nd Stream (Only for Ch 4)
+        // CHANGE: Just show name + color change (style 1), no extra text.
+        showChannelName(channel.name, 1);
+        
         fetchLatestVideoId(channel.channelId, 1).then(vidId => {
              loadYoutubePlayer(vidId || `live_stream?channel=${channel.channelId}`, channel);
         });
     } else {
-        // Toggle 0: Main Stream (Direct Link -> Auto Rescue)
+        // Toggle 0: Main Stream
         showChannelName(channel.name, 0);
         loadYoutubePlayer(`live_stream?channel=${channel.channelId}`, channel);
     }
@@ -218,9 +218,7 @@ function showChannelName(name, styleType) {
 function queueChannelLoad(index) {
   const isSame = (currentChannel === index);
   const channel = CHANNELS[index];
-
-  // LOGIC FIX: Check "allowToggle" property
-  // Only Channel 4 has allowToggle=true, so only it will switch streams.
+  // LOGIC: Only toggle if channel allows it (Channel 4)
   if (isSame && channel.type === 'hybrid' && channel.allowToggle) {
       streamToggle = (streamToggle === 0) ? 1 : 0;
   } else {
@@ -233,7 +231,6 @@ function queueChannelLoad(index) {
   if (loadTimeout) clearTimeout(loadTimeout);
   loadTimeout = setTimeout(() => { loadChannel(index, streamToggle); }, LOAD_DELAY_MS);
 }
-
 // Navigation Inputs
 window.addEventListener('keydown', (e) => {
   const k = e.key; const c = e.keyCode; const now = Date.now();
@@ -261,4 +258,3 @@ loadChannel(currentChannel);
 </script>
 </body>
 </html>
-
