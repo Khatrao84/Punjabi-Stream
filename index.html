@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -58,11 +58,12 @@
   </div>
 
 <script>
+// --- CONFIGURATION ---
 const CHANNELS = [
   { name: "1. ਪਟਨਾ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UC3nqw1kd4AK1q9e68YUoLDQ", fallback: "TTK7eNuI3M0", type: "direct" },
-  { name: "2. ਅੰਮ੍ਰਿਤਸਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCYn6UEtQ771a_OWSiNBoG8w", type: "direct" },
-  { name: "3. ਬਾਬਾ ਦੀਪ ਸਿੰਘ ਜੀ ਅੰਮ੍ਰਿਤਸਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCxWx-MPft_7mKrFtN6uOaAA", type: "direct" },
-  { name: "4. ਫਤੇਹਗੜ੍ਹ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCAlr_lKSvMEQNccg5lUmcJQ", type: "direct" },
+  { name: "2. ਅੰਮ੍ਰਿਤਸਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCYn6UEtQ771a_OWSiNBoG8w", type: "smart-live" },
+  { name: "3. ਬਾਬਾ ਦੀਪ ਸਿੰਘ ਜੀ ਅੰਮ੍ਰਿਤਸਰ ਸਾਹਿਬ", channelId: "UCxWx-MPft_7mKrFtN6uOaAA", type: "direct" },
+  { name: "4. ਫਤੇਹਗੜ੍ਹ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCudVHqnOekwcvpzNpY8_ERw", type: "smart-live" },
   { name: "5. ਆਨੰਦਪੁਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCSx5035_us8h8DOp_YhQDaw", type: "direct" },
   { name: "6. ਦਮਦਮਾ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCY8jMpyRRcdzSf6uLiU6izQ", type: "direct" },
   { name: "7. ਹਜ਼ੂਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCuerQ47I9Y2qxr4eIopxbYw", type: "direct" },
@@ -80,22 +81,17 @@ const OVERLAY = document.getElementById('overlay');
 
 let currentChannel = parseInt(localStorage.getItem('currentChannel')) || 0;
 let streamToggle = 0; 
-let refreshTimer, loadTimeout, hideTimeout, hls;
+let refreshTimer, loadTimeout, hideTimeout, safetyTimer, hls;
 let lastScrollTime = 0;
 const SCROLL_SPEED_MS = 350; 
 const LOAD_DELAY_MS = 600;
-
 let ytPlayer = null;
-let fallbackTimer = null;
-let ytApiReady = false;
-let usingFallback = false;
 
-window.onYouTubeIframeAPIReady = function() { ytApiReady = true; };
-
-async function fixLiveMultiStream(channelId) {
+// --- SCANNER LOGIC (Only runs when requested) ---
+async function fetchSecondaryStream(channelId) {
     try {
         const proxy = "https://api.allorigins.win/get?url=";
-        const target = encodeURIComponent(`https://www.youtube.com/channel/${channelId}/live`);
+        const target = encodeURIComponent(`https://www.youtube.com/channel/${channelId}/streams`);
         const res = await fetch(proxy + target);
         const data = await res.json();
         const html = data.contents;
@@ -105,15 +101,12 @@ async function fixLiveMultiStream(channelId) {
         while ((match = regex.exec(html)) !== null) {
             streams.push({ id: match[1], watchers: parseInt(match[2].replace(/,/g, '')) });
         }
-        if (streams.length > 0) {
-            streams.sort((a, b) => b.watchers - a.watchers);
-            const bestId = streams[0].id;
-            const iframe = STREAM_DIV.querySelector('iframe');
-            if (iframe && !iframe.src.includes(bestId)) {
-                iframe.src = `https://www.youtube.com/embed/${bestId}?autoplay=1&modestbranding=1&controls=0&rel=0`;
-            }
-        }
-    } catch (e) { console.log("Background scanner skipped."); }
+        streams.sort((a, b) => b.watchers - a.watchers);
+        // Return 2nd stream if exists, else null
+        return (streams.length >= 2) ? streams[1].id : null;
+    } catch (e) {
+        return null;
+    }
 }
 
 function loadChannel(index, toggle = 0) {
@@ -123,29 +116,56 @@ function loadChannel(index, toggle = 0) {
   HLS_VIDEO.style.display = 'none';
   TIME_TV.style.display = 'none';
   STREAM_DIV.innerHTML = '';
+  
+  // Cleanup
   if (hls) { hls.destroy(); hls = null; }
   HLS_VIDEO.pause();
-  if (fallbackTimer) clearTimeout(fallbackTimer);
+  if (safetyTimer) clearTimeout(safetyTimer);
   if (ytPlayer) { try { ytPlayer.destroy(); } catch(e){} ytPlayer = null; }
-  usingFallback = false;
 
   const channel = CHANNELS[index];
 
-  if (channel.type === 'direct') {
-    loadDirect(channel, (index === 3 ? toggle : 0));
-    if (index === 1 || index === 3) fixLiveMultiStream(channel.channelId);
+  // --- SAFETY TIMEOUT: Forces spinner to hide after 6 seconds max ---
+  safetyTimer = setTimeout(() => { loadingIndicator.style.display = 'none'; }, 6000);
+
+  if (channel.type === 'smart-live' && toggle === 1) {
+    // --- MODE 2: SECONDARY STREAM (Scanner) ---
+    STREAM_DIV.style.display = 'block';
+    showChannelName(channel.name + " (Scanning...)", 1);
+    
+    fetchSecondaryStream(channel.channelId).then(vidId => {
+        if (vidId) {
+            loadYoutubePlayer(vidId, null);
+            showChannelName(channel.name + " (Feed 2)", 1);
+        } else {
+            // If scan fails, silently revert to main feed
+            loadYoutubePlayer(`live_stream?channel=${channel.channelId}`, null);
+            showChannelName(channel.name + " (Main)", 0);
+        }
+    });
+
+  } else if (channel.type === 'direct' || channel.type === 'smart-live') {
+    // --- MODE 1: DIRECT (Instant Load) ---
+    STREAM_DIV.style.display = 'block';
+    // This URL is magic: it ALWAYS redirects to the live stream. No scanning needed.
+    loadYoutubePlayer(`live_stream?channel=${channel.channelId}`, channel.fallback);
+    showChannelName(channel.name, 0);
+
   } else if (channel.type === 'iframe') {
     STREAM_DIV.style.display = 'block';
     STREAM_DIV.innerHTML = `<iframe src="${channel.url}" allow="autoplay; fullscreen"></iframe>`;
     STREAM_DIV.querySelector('iframe').onload = () => loadingIndicator.style.display = 'none';
     showChannelName(channel.name, 0);
+
   } else if (channel.type === 'hls') {
     HLS_VIDEO.style.display = 'block';
     if (Hls.isSupported()) {
       hls = new Hls(); hls.loadSource(channel.url); hls.attachMedia(HLS_VIDEO);
       hls.on(Hls.Events.MANIFEST_PARSED, () => { HLS_VIDEO.play(); loadingIndicator.style.display = 'none'; });
+      hls.on(Hls.Events.ERROR, () => { loadingIndicator.style.display = 'none'; });
     }
     showChannelName(channel.name, 0);
+
   } else if (channel.type === 'time') {
     TIME_TV.style.display = 'block'; loadingIndicator.style.display = 'none';
     showChannelName(channel.name, 0);
@@ -153,33 +173,35 @@ function loadChannel(index, toggle = 0) {
   setupAutoRefresh();
 }
 
-function loadDirect(channel, toggleStyle = 0) {
-    STREAM_DIV.style.display = 'block';
-    const embedUrl = `https://www.youtube.com/embed/live_stream?channel=${channel.channelId}&autoplay=1&modestbranding=1&controls=0&rel=0&enablejsapi=1&cb=${Date.now()}`;
-    STREAM_DIV.innerHTML = `<iframe id="main-player" src="${embedUrl}" allow="autoplay; fullscreen"></iframe>`;
+function loadYoutubePlayer(videoIdOrParams, fallbackId) {
+    let srcUrl = videoIdOrParams.includes('channel=') 
+        ? `https://www.youtube.com/embed/${videoIdOrParams}&autoplay=1&modestbranding=1&controls=0&rel=0&enablejsapi=1`
+        : `https://www.youtube.com/embed/${videoIdOrParams}?autoplay=1&modestbranding=1&controls=0&rel=0&enablejsapi=1`;
+
+    STREAM_DIV.innerHTML = `<iframe id="main-player" src="${srcUrl}" allow="autoplay; fullscreen"></iframe>`;
+
+    // Wait for iframe load event to kill spinner (Simple & Reliable)
     STREAM_DIV.querySelector('iframe').onload = () => {
         loadingIndicator.style.display = 'none';
-        if (ytApiReady && channel.fallback) initFallback(channel.fallback);
     };
-    showChannelName(channel.name, toggleStyle);
-}
 
-function initFallback(fId) {
-  ytPlayer = new YT.Player('main-player', { events: {
-    'onReady': () => { 
-        fallbackTimer = setTimeout(() => { 
-          if (ytPlayer.getPlayerState() < 0 || ytPlayer.getPlayerState() === 0) triggerFallback(fId); 
-        }, 15000); 
-    },
-    'onStateChange': (e) => { if (e.data === 0) triggerFallback(fId); },
-    'onError': () => triggerFallback(fId)
-  }});
-}
-
-function triggerFallback(id) { 
-    if (usingFallback || !id) return;
-    usingFallback = true;
-    STREAM_DIV.innerHTML = `<iframe src="https://www.youtube.com/embed/${id}?autoplay=1&modestbranding=1&controls=0" allow="autoplay; fullscreen"></iframe>`; 
+    // Optional: Add API hook for "Video Unavailable" detection
+    setTimeout(() => {
+        if (window.YT && YT.Player) {
+            try {
+                new YT.Player('main-player', {
+                    events: {
+                        'onError': () => { 
+                             if(fallbackId) {
+                                 console.log("Error detected, switching fallback");
+                                 STREAM_DIV.innerHTML = `<iframe src="https://www.youtube.com/embed/${fallbackId}?autoplay=1&modestbranding=1&controls=0" allow="autoplay; fullscreen"></iframe>`;
+                             }
+                        }
+                    }
+                });
+            } catch(e) {}
+        }
+    }, 1000);
 }
 
 function setupAutoRefresh() {
@@ -196,16 +218,23 @@ function showChannelName(name, styleType) {
 
 function queueChannelLoad(index) {
   const isSame = (currentChannel === index);
-  // Toggle feature exclusive to Index 3 (Channel 4)
-  if (isSame && index === 3) streamToggle = (streamToggle === 0) ? 1 : 0;
-  else streamToggle = 0;
+  const channel = CHANNELS[index];
+
+  // Toggle Logic: Only for smart-live channels
+  if (isSame && channel.type === 'smart-live') {
+      streamToggle = (streamToggle === 0) ? 1 : 0;
+  } else {
+      streamToggle = 0;
+  }
   
   currentChannel = index;
-  showChannelName(CHANNELS[index].name, (isSame && index === 3 ? streamToggle : 0));
+  showChannelName(channel.name, streamToggle);
+  
   if (loadTimeout) clearTimeout(loadTimeout);
   loadTimeout = setTimeout(() => { loadChannel(index, streamToggle); }, LOAD_DELAY_MS);
 }
 
+// Navigation Inputs
 window.addEventListener('keydown', (e) => {
   const k = e.key; const c = e.keyCode; const now = Date.now();
   if (now - lastScrollTime < SCROLL_SPEED_MS) return;
@@ -220,7 +249,6 @@ window.addEventListener('keydown', (e) => {
     e.preventDefault(); queueChannelLoad(9);
   }
 });
-
 OVERLAY.addEventListener('click', () => queueChannelLoad((currentChannel + 1) % CHANNELS.length));
 
 function updateLocalTime() {
