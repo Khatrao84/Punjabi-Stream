@@ -60,9 +60,9 @@
 <script>
 const CHANNELS = [
   { name: "1. ਪਟਨਾ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UC3nqw1kd4AK1q9e68YUoLDQ", fallback: "TTK7eNuI3M0", type: "direct" },
-  { name: "2. ਅੰਮ੍ਰਿਤਸਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCYn6UEtQ771a_OWSiNBoG8w", type: "multi-rss" },
+  { name: "2. ਅੰਮ੍ਰਿਤਸਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCYn6UEtQ771a_OWSiNBoG8w", type: "direct" },
   { name: "3. ਬਾਬਾ ਦੀਪ ਸਿੰਘ ਜੀ ਅੰਮ੍ਰਿਤਸਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCxWx-MPft_7mKrFtN6uOaAA", type: "direct" },
-  { name: "4. ਫਤੇਹਗੜ੍ਹ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCAlr_lKSvMEQNccg5lUmcJQ", type: "multi-rss" },
+  { name: "4. ਫਤੇਹਗੜ੍ਹ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCudVHqnOekwcvpzNpY8_ERw", type: "direct" },
   { name: "5. ਆਨੰਦਪੁਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCSx5035_us8h8DOp_YhQDaw", type: "direct" },
   { name: "6. ਦਮਦਮਾ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCY8jMpyRRcdzSf6uLiU6izQ", type: "direct" },
   { name: "7. ਹਜ਼ੂਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCuerQ47I9Y2qxr4eIopxbYw", type: "direct" },
@@ -131,33 +131,9 @@ function loadChannel(index, toggle = 0) {
 
   const channel = CHANNELS[index];
 
-  if (channel.type === 'multi-rss') {
-    STREAM_DIV.style.display = 'block';
-    const rssUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent('https://www.youtube.com/feeds/videos.xml?channel_id=' + channel.channelId)}&t=${Date.now()}`;
-    
-    fetch(rssUrl).then(res => res.json()).then(data => {
-        let items = data.items || [];
-        let vidId = "";
-        let activeStyle = 0;
-
-        // Logic check: only use items[1] if it is Channel 4 (Index 3)
-        if (index === 3 && toggle === 1 && items.length >= 2) {
-            vidId = items[1].link.split('v=')[1];
-            activeStyle = 1;
-        } else {
-            vidId = items.length > 0 ? items[0].link.split('v=')[1] : `live_stream?channel=${channel.channelId}`;
-            activeStyle = 0;
-        }
-        
-        STREAM_DIV.innerHTML = `<iframe src="https://www.youtube.com/embed/${vidId}?autoplay=1&modestbranding=1&controls=0&rel=0" allow="autoplay; fullscreen"></iframe>`;
-        STREAM_DIV.querySelector('iframe').onload = () => loadingIndicator.style.display = 'none';
-        showChannelName(channel.name, activeStyle);
-
-        if (index === 1 || index === 3) fixLiveMultiStream(channel.channelId);
-    }).catch(() => loadDirect(channel));
-
-  } else if (channel.type === 'direct') {
-    loadDirect(channel);
+  if (channel.type === 'direct') {
+    loadDirect(channel, (index === 3 ? toggle : 0));
+    if (index === 1 || index === 3) fixLiveMultiStream(channel.channelId);
   } else if (channel.type === 'iframe') {
     STREAM_DIV.style.display = 'block';
     STREAM_DIV.innerHTML = `<iframe src="${channel.url}" allow="autoplay; fullscreen"></iframe>`;
@@ -177,7 +153,7 @@ function loadChannel(index, toggle = 0) {
   setupAutoRefresh();
 }
 
-function loadDirect(channel) {
+function loadDirect(channel, toggleStyle = 0) {
     STREAM_DIV.style.display = 'block';
     const embedUrl = `https://www.youtube.com/embed/live_stream?channel=${channel.channelId}&autoplay=1&modestbranding=1&controls=0&rel=0&enablejsapi=1&cb=${Date.now()}`;
     STREAM_DIV.innerHTML = `<iframe id="main-player" src="${embedUrl}" allow="autoplay; fullscreen"></iframe>`;
@@ -185,7 +161,7 @@ function loadDirect(channel) {
         loadingIndicator.style.display = 'none';
         if (ytApiReady && channel.fallback) initFallback(channel.fallback);
     };
-    showChannelName(channel.name, 0);
+    showChannelName(channel.name, toggleStyle);
 }
 
 function initFallback(fId) {
@@ -220,7 +196,7 @@ function showChannelName(name, styleType) {
 
 function queueChannelLoad(index) {
   const isSame = (currentChannel === index);
-  // Change: Toggle only for index 3 (Channel 4)
+  // Toggle feature exclusive to Index 3 (Channel 4)
   if (isSame && index === 3) streamToggle = (streamToggle === 0) ? 1 : 0;
   else streamToggle = 0;
   
@@ -257,4 +233,3 @@ loadChannel(currentChannel);
 </script>
 </body>
 </html>
-
