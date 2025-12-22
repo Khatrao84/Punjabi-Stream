@@ -27,7 +27,6 @@
     }
     .style-main { background-color: rgba(0, 41, 107, 0.9) !important; color: #FFD700 !important; }
     .style-alt { background-color: #FFD700 !important; color: #00296B !important; }
-    
     #channelName.show { bottom: 0; opacity: 1; }
     
     .loading {
@@ -121,7 +120,6 @@ function loadChannel(index, toggle = 0) {
   if (ytPlayer) { try { ytPlayer.destroy(); } catch(e){} ytPlayer = null; }
 
   const channel = CHANNELS[index];
-
   safetyTimer = setTimeout(() => { loadingIndicator.style.display = 'none'; }, 2500);
 
   if (channel.type === 'hybrid') {
@@ -160,15 +158,13 @@ function loadChannel(index, toggle = 0) {
 }
 
 function loadYoutubePlayer(videoIdOrParams, channelObj = null) {
-    // REVERTED: Back to standard youtube.com to fix Error 153
     let domain = "https://www.youtube.com/embed/";
     
-    // KEPT: mute=1 is essential to solve the Night/Bot issue
+    // Default mute=1 to start
     let srcUrl = videoIdOrParams.includes('channel=') 
         ? `${domain}${videoIdOrParams}&autoplay=1&mute=1&modestbranding=1&controls=0&rel=0&enablejsapi=1&origin=${window.location.origin}`
         : `${domain}${videoIdOrParams}?autoplay=1&mute=1&modestbranding=1&controls=0&rel=0&enablejsapi=1&origin=${window.location.origin}`;
 
-    // REMOVED: referrerpolicy="no-referrer" to fix Error 153
     STREAM_DIV.innerHTML = `<iframe id="main-player" src="${srcUrl}" allow="autoplay; fullscreen"></iframe>`;
 
     setTimeout(() => {
@@ -178,25 +174,45 @@ function loadYoutubePlayer(videoIdOrParams, channelObj = null) {
                     'onReady': (e) => { 
                         loadingIndicator.style.display = 'none'; 
                         e.target.playVideo();
-                        // 1. Attempts to unmute immediately
-                        // 2. Tries again after 1 second (essential for slow connections)
+                        // Unmute Logic 1 (Immediate)
                         try { e.target.unMute(); } catch(err){}
+                        // Unmute Logic 2 (Delayed Safety)
                         setTimeout(() => { try { e.target.unMute(); } catch(err){} }, 1000);
                     },
                     'onError': (e) => {
                         console.log("Player Error: " + e.data);
+                        
+                        // Define helper to load Rescue Player with API support for unmuting
+                        const loadRescuePlayer = (id) => {
+                            // We must create a container for the new player first
+                            STREAM_DIV.innerHTML = '<div id="rescue-player-container"></div>';
+                            
+                            new YT.Player('rescue-player-container', {
+                                height: '100%', width: '100%',
+                                videoId: id,
+                                playerVars: { 
+                                    'autoplay': 1, 'mute': 1, // Start muted
+                                    'modestbranding': 1, 'controls': 0, 'rel': 0 
+                                },
+                                events: {
+                                    'onReady': (ev) => {
+                                        loadingIndicator.style.display = 'none';
+                                        ev.target.playVideo();
+                                        // CRITICAL FIX: Unmute the Rescue Player
+                                        try { ev.target.unMute(); } catch(err){}
+                                        setTimeout(() => { try { ev.target.unMute(); } catch(err){} }, 1000);
+                                    }
+                                }
+                            });
+                        };
+
                         if (channelObj && channelObj.type === 'hybrid') {
                             loadingIndicator.style.display = 'block'; 
                             fetchLatestVideoId(channelObj.channelId, 0).then(vidId => {
-                                if(vidId) {
-                                    // Use standard domain for rescue too
-                                    STREAM_DIV.innerHTML = `<iframe src="https://www.youtube.com/embed/${vidId}?autoplay=1&mute=1&modestbranding=1&controls=0" allow="autoplay; fullscreen"></iframe>`;
-                                    loadingIndicator.style.display = 'none';
-                                }
+                                if(vidId) loadRescuePlayer(vidId);
                             });
                         } else if (channelObj && channelObj.fallback) {
-                             STREAM_DIV.innerHTML = `<iframe src="https://www.youtube.com/embed/${channelObj.fallback}?autoplay=1&mute=1&modestbranding=1&controls=0" allow="autoplay; fullscreen"></iframe>`;
-                             loadingIndicator.style.display = 'none';
+                             loadRescuePlayer(channelObj.fallback);
                         }
                     }
                 }
