@@ -16,7 +16,7 @@
     }
     #container { position: relative; width: 100vw; height: 100vh; }
     #stream { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
-    #stream iframe { width: 100%; height: 100%; border: none; display:block; }
+    #stream iframe { width: 100%; height: 100%; border: none; display:block; pointer-events: none; }
     #hls-video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; display: none; }
     #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; cursor: pointer; outline: none; }
     
@@ -92,7 +92,6 @@ let ytApiReady = false;
 window.onYouTubeIframeAPIReady = function() { ytApiReady = true; };
 
 // --- RSS SCANNER (Auto-Rescue) ---
-// Finds the actual Latest Video ID from the channel's RSS feed
 async function fetchLatestVideoId(channelId, offset = 0) {
     try {
         const rssUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent('https://www.youtube.com/feeds/videos.xml?channel_id=' + channelId)}&t=${Date.now()}`;
@@ -123,36 +122,28 @@ function loadChannel(index, toggle = 0) {
 
   const channel = CHANNELS[index];
 
-  // Force Loader Timeout (2.5s Safety)
   safetyTimer = setTimeout(() => { loadingIndicator.style.display = 'none'; }, 2500);
 
   if (channel.type === 'hybrid') {
-    // --- HYBRID LOGIC ---
     STREAM_DIV.style.display = 'block';
-    
     if (toggle === 1) {
-        // Toggle 1: 2nd Stream (Only for Ch 4)
         showChannelName(channel.name, 1);
         fetchLatestVideoId(channel.channelId, 1).then(vidId => {
              loadYoutubePlayer(vidId || `live_stream?channel=${channel.channelId}`, channel);
         });
     } else {
-        // Toggle 0: Main Stream (Direct Link -> Auto Rescue)
         showChannelName(channel.name, 0);
         loadYoutubePlayer(`live_stream?channel=${channel.channelId}`, channel);
     }
-
   } else if (channel.type === 'direct') {
     STREAM_DIV.style.display = 'block';
     loadYoutubePlayer(`live_stream?channel=${channel.channelId}`, channel);
     showChannelName(channel.name, 0);
-
   } else if (channel.type === 'iframe') {
     STREAM_DIV.style.display = 'block';
     STREAM_DIV.innerHTML = `<iframe src="${channel.url}" allow="autoplay; fullscreen"></iframe>`;
     STREAM_DIV.querySelector('iframe').onload = () => loadingIndicator.style.display = 'none';
     showChannelName(channel.name, 0);
-
   } else if (channel.type === 'hls') {
     HLS_VIDEO.style.display = 'block';
     if (Hls.isSupported()) {
@@ -161,7 +152,6 @@ function loadChannel(index, toggle = 0) {
       hls.on(Hls.Events.ERROR, () => loadingIndicator.style.display = 'none');
     }
     showChannelName(channel.name, 0);
-
   } else if (channel.type === 'time') {
     TIME_TV.style.display = 'block'; loadingIndicator.style.display = 'none';
     showChannelName(channel.name, 0);
@@ -170,10 +160,15 @@ function loadChannel(index, toggle = 0) {
 }
 
 function loadYoutubePlayer(videoIdOrParams, channelObj = null) {
+    // REVERTED: Back to standard youtube.com to fix Error 153
+    let domain = "https://www.youtube.com/embed/";
+    
+    // KEPT: mute=1 is essential to solve the Night/Bot issue
     let srcUrl = videoIdOrParams.includes('channel=') 
-        ? `https://www.youtube.com/embed/${videoIdOrParams}&autoplay=1&modestbranding=1&controls=0&rel=0&enablejsapi=1`
-        : `https://www.youtube.com/embed/${videoIdOrParams}?autoplay=1&modestbranding=1&controls=0&rel=0&enablejsapi=1`;
+        ? `${domain}${videoIdOrParams}&autoplay=1&mute=1&modestbranding=1&controls=0&rel=0&enablejsapi=1&origin=${window.location.origin}`
+        : `${domain}${videoIdOrParams}?autoplay=1&mute=1&modestbranding=1&controls=0&rel=0&enablejsapi=1&origin=${window.location.origin}`;
 
+    // REMOVED: referrerpolicy="no-referrer" to fix Error 153
     STREAM_DIV.innerHTML = `<iframe id="main-player" src="${srcUrl}" allow="autoplay; fullscreen"></iframe>`;
 
     setTimeout(() => {
@@ -182,26 +177,25 @@ function loadYoutubePlayer(videoIdOrParams, channelObj = null) {
                 events: {
                     'onReady': (e) => { 
                         loadingIndicator.style.display = 'none'; 
-                        e.target.playVideo(); 
+                        e.target.playVideo();
+                        // 1. Attempts to unmute immediately
+                        // 2. Tries again after 1 second (essential for slow connections)
+                        try { e.target.unMute(); } catch(err){}
+                        setTimeout(() => { try { e.target.unMute(); } catch(err){} }, 1000);
                     },
                     'onError': (e) => {
-                        console.log("Player Error detected: " + e.data);
-                        
-                        // 1. HYBRID AUTO-RESCUE (Ch 2, 4, 8)
-                        // If direct link fails, fetch the latest video ID from RSS
+                        console.log("Player Error: " + e.data);
                         if (channelObj && channelObj.type === 'hybrid') {
                             loadingIndicator.style.display = 'block'; 
                             fetchLatestVideoId(channelObj.channelId, 0).then(vidId => {
                                 if(vidId) {
-                                    STREAM_DIV.innerHTML = `<iframe src="https://www.youtube.com/embed/${vidId}?autoplay=1&modestbranding=1&controls=0" allow="autoplay; fullscreen"></iframe>`;
+                                    // Use standard domain for rescue too
+                                    STREAM_DIV.innerHTML = `<iframe src="https://www.youtube.com/embed/${vidId}?autoplay=1&mute=1&modestbranding=1&controls=0" allow="autoplay; fullscreen"></iframe>`;
                                     loadingIndicator.style.display = 'none';
                                 }
                             });
-                        } 
-                        // 2. STANDARD FALLBACK (Ch 1)
-                        // Uses the hardcoded fallback ID
-                        else if (channelObj && channelObj.fallback) {
-                             STREAM_DIV.innerHTML = `<iframe src="https://www.youtube.com/embed/${channelObj.fallback}?autoplay=1&modestbranding=1&controls=0" allow="autoplay; fullscreen"></iframe>`;
+                        } else if (channelObj && channelObj.fallback) {
+                             STREAM_DIV.innerHTML = `<iframe src="https://www.youtube.com/embed/${channelObj.fallback}?autoplay=1&mute=1&modestbranding=1&controls=0" allow="autoplay; fullscreen"></iframe>`;
                              loadingIndicator.style.display = 'none';
                         }
                     }
@@ -226,17 +220,13 @@ function showChannelName(name, styleType) {
 function queueChannelLoad(index) {
   const isSame = (currentChannel === index);
   const channel = CHANNELS[index];
-
-  // LOGIC: Only toggle if channel allows it (Channel 4 only)
   if (isSame && channel.type === 'hybrid' && channel.allowToggle) {
       streamToggle = (streamToggle === 0) ? 1 : 0;
   } else {
       streamToggle = 0;
   }
-  
   currentChannel = index;
   showChannelName(channel.name, streamToggle);
-  
   if (loadTimeout) clearTimeout(loadTimeout);
   loadTimeout = setTimeout(() => { loadChannel(index, streamToggle); }, LOAD_DELAY_MS);
 }
