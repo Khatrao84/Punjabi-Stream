@@ -62,12 +62,13 @@
 const CHANNELS = [
   { name: "1. ਪਟਨਾ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UC3nqw1kd4AK1q9e68YUoLDQ", fallback: "TTK7eNuI3M0", type: "direct" },
   { name: "2. ਅੰਮ੍ਰਿਤਸਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCYn6UEtQ771a_OWSiNBoG8w", type: "hybrid" },
-  { name: "3. ਬਾਬਾ ਦੀਪ ਸਿੰਘ ਜੀ ਅੰਮ੍ਰਿਤਸਰ ਸਾਹਿਬ", channelId: "UCxWx-MPft_7mKrFtN6uOaAA", type: "direct" },
+  { name: "3. ਬਾਬਾ ਦੀਪ ਸਿੰਘ ਜੀ ਅੰਮ੍ਰਿਤਸਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCxWx-MPft_7mKrFtN6uOaAA", type: "direct" },
+  // Ch 4: Hybrid + Toggle enabled
   { name: "4. ਫਤੇਹਗੜ੍ਹ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCudVHqnOekwcvpzNpY8_ERw", type: "hybrid", allowToggle: true },
   { name: "5. ਆਨੰਦਪੁਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCSx5035_us8h8DOp_YhQDaw", type: "direct" },
   { name: "6. ਦਮਦਮਾ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCY8jMpyRRcdzSf6uLiU6izQ", type: "direct" },
   { name: "7. ਹਜ਼ੂਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCuerQ47I9Y2qxr4eIopxbYw", type: "direct" },
-  { name: "8. ਚੜਦੀਕਲਾ ਟਾਈਮ ਟੀਵੀ", url: "https://www.yupptv.com/yupptvnew/channels/chardikala-time-tv/live/embed", type: "iframe" },
+  { name: "8. ਬੰਗਲਾ ਸਾਹਿਬ ਦਿੱਲੀ ਲਾਈਵ", channelId: "UCA1Jqo-WXVuMgs4WcD5f5Yw", type: "hybrid" },
   { name: "9. ਡੀਡੀ ਪੰਜਾਬੀ", url: "https://d3eyhgoylams0m.cloudfront.net/v1/manifest/93ce20f0f52760bf38be911ff4c91ed02aa2fd92/ed7bd2c7-8d10-4051-b397-2f6b90f99acb/20c8ad14-a158-4a42-8889-e032d070856e/2.m3u8", type: "hls" },
   { name: "0. ਲਾਈਵ ਟਾਈਮ", type: "time" }
 ];
@@ -91,6 +92,7 @@ let ytApiReady = false;
 window.onYouTubeIframeAPIReady = function() { ytApiReady = true; };
 
 // --- RSS SCANNER (Auto-Rescue) ---
+// Finds the actual Latest Video ID from the channel's RSS feed
 async function fetchLatestVideoId(channelId, offset = 0) {
     try {
         const rssUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent('https://www.youtube.com/feeds/videos.xml?channel_id=' + channelId)}&t=${Date.now()}`;
@@ -121,7 +123,7 @@ function loadChannel(index, toggle = 0) {
 
   const channel = CHANNELS[index];
 
-  // FORCE HIDE LOADER (2.5s Safety)
+  // Force Loader Timeout (2.5s Safety)
   safetyTimer = setTimeout(() => { loadingIndicator.style.display = 'none'; }, 2500);
 
   if (channel.type === 'hybrid') {
@@ -135,7 +137,7 @@ function loadChannel(index, toggle = 0) {
              loadYoutubePlayer(vidId || `live_stream?channel=${channel.channelId}`, channel);
         });
     } else {
-        // Toggle 0: Main Stream
+        // Toggle 0: Main Stream (Direct Link -> Auto Rescue)
         showChannelName(channel.name, 0);
         loadYoutubePlayer(`live_stream?channel=${channel.channelId}`, channel);
     }
@@ -185,7 +187,8 @@ function loadYoutubePlayer(videoIdOrParams, channelObj = null) {
                     'onError': (e) => {
                         console.log("Player Error detected: " + e.data);
                         
-                        // 1. HYBRID AUTO-RESCUE (Ch 2 & 4)
+                        // 1. HYBRID AUTO-RESCUE (Ch 2, 4, 8)
+                        // If direct link fails, fetch the latest video ID from RSS
                         if (channelObj && channelObj.type === 'hybrid') {
                             loadingIndicator.style.display = 'block'; 
                             fetchLatestVideoId(channelObj.channelId, 0).then(vidId => {
@@ -195,9 +198,9 @@ function loadYoutubePlayer(videoIdOrParams, channelObj = null) {
                                 }
                             });
                         } 
-                        // 2. STANDARD FALLBACK (Restored for Ch 1)
+                        // 2. STANDARD FALLBACK (Ch 1)
+                        // Uses the hardcoded fallback ID
                         else if (channelObj && channelObj.fallback) {
-                             console.log("Switching to Fallback ID: " + channelObj.fallback);
                              STREAM_DIV.innerHTML = `<iframe src="https://www.youtube.com/embed/${channelObj.fallback}?autoplay=1&modestbranding=1&controls=0" allow="autoplay; fullscreen"></iframe>`;
                              loadingIndicator.style.display = 'none';
                         }
@@ -224,6 +227,7 @@ function queueChannelLoad(index) {
   const isSame = (currentChannel === index);
   const channel = CHANNELS[index];
 
+  // LOGIC: Only toggle if channel allows it (Channel 4 only)
   if (isSame && channel.type === 'hybrid' && channel.allowToggle) {
       streamToggle = (streamToggle === 0) ? 1 : 0;
   } else {
