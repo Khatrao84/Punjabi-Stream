@@ -62,12 +62,11 @@ const CHANNELS = [
   { name: "1. ਪਟਨਾ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UC3nqw1kd4AK1q9e68YUoLDQ", fallback: "TTK7eNuI3M0", type: "direct" },
   { name: "2. ਅੰਮ੍ਰਿਤਸਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCYn6UEtQ771a_OWSiNBoG8w", type: "hybrid" },
   { name: "3. ਬਾਬਾ ਦੀਪ ਸਿੰਘ ਜੀ ਅੰਮ੍ਰਿਤਸਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCxWx-MPft_7mKrFtN6uOaAA", type: "direct" },
-  // Ch 4: Hybrid + Toggle enabled
   { name: "4. ਫਤੇਹਗੜ੍ਹ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCudVHqnOekwcvpzNpY8_ERw", type: "hybrid", allowToggle: true },
   { name: "5. ਆਨੰਦਪੁਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCSx5035_us8h8DOp_YhQDaw", type: "direct" },
   { name: "6. ਦਮਦਮਾ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCY8jMpyRRcdzSf6uLiU6izQ", type: "direct" },
   { name: "7. ਹਜ਼ੂਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCuerQ47I9Y2qxr4eIopxbYw", type: "direct" },
-  { name: "8. ਬੰਗਲਾ ਸਾਹਿਬ ਦਿੱਲੀ ਲਾਈਵ", channelId: "UCA1Jqo-WXVuMgs4WcD5f5Yw", type: "hybrid" },
+  { name: "8. ਬੰਗਲਾ ਸਾਹਿਬ ਦਿੱਲੀ ਲਾਈਵ", channelId: "UCA1Jqo-WXVuMgs4WcD5f5Yw", type: "auto-rss" },
   { name: "9. ਡੀਡੀ ਪੰਜਾਬੀ", url: "https://d3eyhgoylams0m.cloudfront.net/v1/manifest/93ce20f0f52760bf38be911ff4c91ed02aa2fd92/ed7bd2c7-8d10-4051-b397-2f6b90f99acb/20c8ad14-a158-4a42-8889-e032d070856e/2.m3u8", type: "hls" },
   { name: "0. ਲਾਈਵ ਟਾਈਮ", type: "time" }
 ];
@@ -90,7 +89,6 @@ let ytApiReady = false;
 
 window.onYouTubeIframeAPIReady = function() { ytApiReady = true; };
 
-// --- RSS SCANNER (Auto-Rescue) ---
 async function fetchLatestVideoId(channelId, offset = 0) {
     try {
         const rssUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent('https://www.youtube.com/feeds/videos.xml?channel_id=' + channelId)}&t=${Date.now()}`;
@@ -122,11 +120,11 @@ function loadChannel(index, toggle = 0) {
   const channel = CHANNELS[index];
   safetyTimer = setTimeout(() => { loadingIndicator.style.display = 'none'; }, 2500);
 
-  if (channel.type === 'hybrid') {
+  if (channel.type === 'hybrid' || channel.type === 'auto-rss') {
     STREAM_DIV.style.display = 'block';
-    if (toggle === 1) {
-        showChannelName(channel.name, 1);
-        fetchLatestVideoId(channel.channelId, 1).then(vidId => {
+    if (toggle === 1 || channel.type === 'auto-rss') {
+        showChannelName(channel.name, (channel.type === 'auto-rss' ? 0 : 1));
+        fetchLatestVideoId(channel.channelId, 0).then(vidId => {
              loadYoutubePlayer(vidId || `live_stream?channel=${channel.channelId}`, channel);
         });
     } else {
@@ -159,8 +157,6 @@ function loadChannel(index, toggle = 0) {
 
 function loadYoutubePlayer(videoIdOrParams, channelObj = null) {
     let domain = "https://www.youtube.com/embed/";
-    
-    // Default mute=1 to start
     let srcUrl = videoIdOrParams.includes('channel=') 
         ? `${domain}${videoIdOrParams}&autoplay=1&mute=1&modestbranding=1&controls=0&rel=0&enablejsapi=1&origin=${window.location.origin}`
         : `${domain}${videoIdOrParams}?autoplay=1&mute=1&modestbranding=1&controls=0&rel=0&enablejsapi=1&origin=${window.location.origin}`;
@@ -174,39 +170,27 @@ function loadYoutubePlayer(videoIdOrParams, channelObj = null) {
                     'onReady': (e) => { 
                         loadingIndicator.style.display = 'none'; 
                         e.target.playVideo();
-                        // Unmute Logic 1 (Immediate)
                         try { e.target.unMute(); } catch(err){}
-                        // Unmute Logic 2 (Delayed Safety)
                         setTimeout(() => { try { e.target.unMute(); } catch(err){} }, 1000);
                     },
                     'onError': (e) => {
-                        console.log("Player Error: " + e.data);
-                        
-                        // Define helper to load Rescue Player with API support for unmuting
                         const loadRescuePlayer = (id) => {
-                            // We must create a container for the new player first
                             STREAM_DIV.innerHTML = '<div id="rescue-player-container"></div>';
-                            
                             new YT.Player('rescue-player-container', {
                                 height: '100%', width: '100%',
                                 videoId: id,
-                                playerVars: { 
-                                    'autoplay': 1, 'mute': 1, // Start muted
-                                    'modestbranding': 1, 'controls': 0, 'rel': 0 
-                                },
+                                playerVars: { 'autoplay': 1, 'mute': 1, 'modestbranding': 1, 'controls': 0, 'rel': 0 },
                                 events: {
                                     'onReady': (ev) => {
                                         loadingIndicator.style.display = 'none';
                                         ev.target.playVideo();
-                                        // CRITICAL FIX: Unmute the Rescue Player
                                         try { ev.target.unMute(); } catch(err){}
                                         setTimeout(() => { try { ev.target.unMute(); } catch(err){} }, 1000);
                                     }
                                 }
                             });
                         };
-
-                        if (channelObj && channelObj.type === 'hybrid') {
+                        if (channelObj && (channelObj.type === 'hybrid' || channelObj.type === 'auto-rss')) {
                             loadingIndicator.style.display = 'block'; 
                             fetchLatestVideoId(channelObj.channelId, 0).then(vidId => {
                                 if(vidId) loadRescuePlayer(vidId);
@@ -273,5 +257,3 @@ loadChannel(currentChannel);
 </script>
 </body>
 </html>
-
-
