@@ -120,17 +120,29 @@ function loadChannel(index, toggle = 0) {
   const channel = CHANNELS[index];
   safetyTimer = setTimeout(() => { loadingIndicator.style.display = 'none'; }, 2500);
 
-  if (channel.type === 'hybrid' || channel.type === 'auto-rss') {
+  // --- MODIFIED: Handle Toggle (Click 2) logic for Ch 4 ---
+  if (channel.type === 'hybrid') {
     STREAM_DIV.style.display = 'block';
-    if (toggle === 1 || channel.type === 'auto-rss') {
-        showChannelName(channel.name, (channel.type === 'auto-rss' ? 0 : 1));
-        fetchLatestVideoId(channel.channelId, 0).then(vidId => {
+    
+    if (toggle === 1) {
+        // Second Click: Show GOLD style (style-alt), Force 2nd Stream (Offset 1)
+        showChannelName(channel.name, 1); 
+        fetchLatestVideoId(channel.channelId, 1).then(vidId => {
+             // If 2nd stream exists play it, otherwise default to live_stream ID
              loadYoutubePlayer(vidId || `live_stream?channel=${channel.channelId}`, channel);
         });
     } else {
+        // First Click: Show BLUE style (style-main), Try Direct Live
         showChannelName(channel.name, 0);
         loadYoutubePlayer(`live_stream?channel=${channel.channelId}`, channel);
     }
+  } 
+  else if (channel.type === 'auto-rss') {
+    STREAM_DIV.style.display = 'block';
+    showChannelName(channel.name, 0);
+    fetchLatestVideoId(channel.channelId, 0).then(vidId => {
+         loadYoutubePlayer(vidId || `live_stream?channel=${channel.channelId}`, channel);
+    });
   } else if (channel.type === 'direct') {
     STREAM_DIV.style.display = 'block';
     loadYoutubePlayer(`live_stream?channel=${channel.channelId}`, channel);
@@ -163,6 +175,24 @@ function loadYoutubePlayer(videoIdOrParams, channelObj = null) {
 
     STREAM_DIV.innerHTML = `<iframe id="main-player" src="${srcUrl}" allow="autoplay; fullscreen"></iframe>`;
 
+    // Internal helper for fallback logic
+    const startFallback = (id) => {
+        STREAM_DIV.innerHTML = '<div id="rescue-player-container"></div>';
+        new YT.Player('rescue-player-container', {
+            height: '100%', width: '100%',
+            videoId: id,
+            playerVars: { 'autoplay': 1, 'mute': 1, 'modestbranding': 1, 'controls': 0, 'rel': 0 },
+            events: {
+                'onReady': (ev) => {
+                    loadingIndicator.style.display = 'none';
+                    ev.target.playVideo();
+                    try { ev.target.unMute(); } catch(err){}
+                    setTimeout(() => { try { ev.target.unMute(); } catch(err){} }, 1000);
+                }
+            }
+        });
+    };
+
     setTimeout(() => {
         if (window.YT && YT.Player) {
             ytPlayer = new YT.Player('main-player', {
@@ -173,30 +203,23 @@ function loadYoutubePlayer(videoIdOrParams, channelObj = null) {
                         try { e.target.unMute(); } catch(err){}
                         setTimeout(() => { try { e.target.unMute(); } catch(err){} }, 1000);
                     },
+                    // --- MODIFIED: Handle Stream ENDED (State 0) ---
+                    'onStateChange': (e) => {
+                        if (e.data === 0 && channelObj && channelObj.fallback) {
+                            console.log("Stream Ended. Playing Fallback.");
+                            startFallback(channelObj.fallback);
+                        }
+                    },
                     'onError': (e) => {
-                        const loadRescuePlayer = (id) => {
-                            STREAM_DIV.innerHTML = '<div id="rescue-player-container"></div>';
-                            new YT.Player('rescue-player-container', {
-                                height: '100%', width: '100%',
-                                videoId: id,
-                                playerVars: { 'autoplay': 1, 'mute': 1, 'modestbranding': 1, 'controls': 0, 'rel': 0 },
-                                events: {
-                                    'onReady': (ev) => {
-                                        loadingIndicator.style.display = 'none';
-                                        ev.target.playVideo();
-                                        try { ev.target.unMute(); } catch(err){}
-                                        setTimeout(() => { try { ev.target.unMute(); } catch(err){} }, 1000);
-                                    }
-                                }
-                            });
-                        };
+                        // Handle Errors (Stream offline/unplayable)
                         if (channelObj && (channelObj.type === 'hybrid' || channelObj.type === 'auto-rss')) {
                             loadingIndicator.style.display = 'block'; 
+                            // Try fetching offset 0 (Auto Live 1)
                             fetchLatestVideoId(channelObj.channelId, 0).then(vidId => {
-                                if(vidId) loadRescuePlayer(vidId);
+                                if(vidId) startFallback(vidId);
                             });
                         } else if (channelObj && channelObj.fallback) {
-                             loadRescuePlayer(channelObj.fallback);
+                             startFallback(channelObj.fallback);
                         }
                     }
                 }
