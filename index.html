@@ -59,22 +59,16 @@
 <script>
 // --- CONFIGURATION ---
 const CHANNELS = [
-  { name: "1. ਪਟਨਾ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UC3nqw1kd4AK1q9e68YUoLDQ", fallback: "TTK7eNuI3M0", type: "direct" },
+  // CHANGE 1: Added 'allowToggle: true' to Channel 1 so you can click to switch
+  { name: "1. ਪਟਨਾ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UC3nqw1kd4AK1q9e68YUoLDQ", fallback: "TTK7eNuI3M0", type: "direct", allowToggle: true },
   { name: "2. ਅੰਮ੍ਰਿਤਸਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCYn6UEtQ771a_OWSiNBoG8w", type: "hybrid" },
   { name: "3. ਬਾਬਾ ਦੀਪ ਸਿੰਘ ਜੀ ਅੰਮ੍ਰਿਤਸਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCxWx-MPft_7mKrFtN6uOaAA", type: "direct" },
   { name: "4. ਫਤੇਹਗੜ੍ਹ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCudVHqnOekwcvpzNpY8_ERw", type: "hybrid", allowToggle: true },
   { name: "5. ਆਨੰਦਪੁਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCSx5035_us8h8DOp_YhQDaw", type: "direct" },
   { name: "6. ਦਮਦਮਾ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCY8jMpyRRcdzSf6uLiU6izQ", type: "direct" },
-  
-  // --- NEW CHANNEL 7: SIS GANJ SAHIB ---
-  // NOTE: You must replace 'PASTE_THE_UC_ID_HERE' with the actual channel ID starting with 'UC'
   { name: "7. ਸੀਸ ਗੰਜ ਸਾਹਿਬ ਦਿੱਲੀ ਲਾਈਵ", channelId: "UCm0p8BmL4d914gBefceFxxA", type: "direct" },
-
   { name: "8. ਬੰਗਲਾ ਸਾਹਿਬ ਦਿੱਲੀ ਲਾਈਵ", channelId: "UCA1Jqo-WXVuMgs4WcD5f5Yw", type: "auto-rss" },
-
-  // --- MOVED HAZUR SAHIB TO CHANNEL 9 ---
   { name: "9. ਹਜ਼ੂਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCuerQ47I9Y2qxr4eIopxbYw", type: "direct" },
-
   { name: "0. ਲਾਈਵ ਟਾਈਮ", type: "time" }
 ];
 
@@ -144,11 +138,23 @@ function loadChannel(index, toggle = 0) {
     fetchLatestVideoId(channel.channelId, 0).then(vidId => {
          loadYoutubePlayer(vidId || `live_stream?channel=${channel.channelId}`, channel);
     });
-  } else if (channel.type === 'direct') {
+  } 
+  
+  // --- CHANGE 2: Updated Logic for 'direct' to handle Toggle ---
+  else if (channel.type === 'direct') {
     STREAM_DIV.style.display = 'block';
-    loadYoutubePlayer(`live_stream?channel=${channel.channelId}`, channel);
-    showChannelName(channel.name, 0);
-  } else if (channel.type === 'iframe') {
+    
+    // Check if toggle is active AND a fallback ID exists
+    if (toggle === 1 && channel.fallback) {
+        loadYoutubePlayer(channel.fallback, channel); // Load fallback immediately
+        showChannelName(channel.name, 1); // Blue Color
+    } else {
+        loadYoutubePlayer(`live_stream?channel=${channel.channelId}`, channel); // Load Live
+        showChannelName(channel.name, 0); // Gold Color
+    }
+  } 
+  
+  else if (channel.type === 'iframe') {
     STREAM_DIV.style.display = 'block';
     STREAM_DIV.innerHTML = `<iframe src="${channel.url}" allow="autoplay; fullscreen"></iframe>`;
     STREAM_DIV.querySelector('iframe').onload = () => loadingIndicator.style.display = 'none';
@@ -240,11 +246,14 @@ function showChannelName(name, styleType) {
 function queueChannelLoad(index) {
   const isSame = (currentChannel === index);
   const channel = CHANNELS[index];
-  if (isSame && channel.type === 'hybrid' && channel.allowToggle) {
+  
+  // --- CHANGE 3: Removed strict check for 'hybrid' so 'direct' can toggle too ---
+  if (isSame && channel.allowToggle) {
       streamToggle = (streamToggle === 0) ? 1 : 0;
   } else {
       streamToggle = 0;
   }
+  
   currentChannel = index;
   showChannelName(channel.name, streamToggle);
   if (loadTimeout) clearTimeout(loadTimeout);
@@ -277,3 +286,4 @@ loadChannel(currentChannel);
 </script>
 </body>
 </html>
+
