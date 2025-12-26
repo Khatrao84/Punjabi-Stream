@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Punjabi Stream</title>
+  <title>Gurbani Stream</title>
   <link rel="icon" href="https://i.postimg.cc/FRDPFKpY/favicon-96x96.png" type="image/png">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Gurmukhi:wght@400;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
@@ -65,9 +65,16 @@ const CHANNELS = [
   { name: "4. ਫਤੇਹਗੜ੍ਹ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCudVHqnOekwcvpzNpY8_ERw", type: "hybrid", allowToggle: true },
   { name: "5. ਆਨੰਦਪੁਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCSx5035_us8h8DOp_YhQDaw", type: "direct" },
   { name: "6. ਦਮਦਮਾ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCY8jMpyRRcdzSf6uLiU6izQ", type: "direct" },
-  { name: "7. ਹਜ਼ੂਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCuerQ47I9Y2qxr4eIopxbYw", type: "direct" },
+  
+  // --- NEW CHANNEL 7: SIS GANJ SAHIB ---
+  // NOTE: You must replace 'PASTE_THE_UC_ID_HERE' with the actual channel ID starting with 'UC'
+  { name: "7. ਸੀਸ ਗੰਜ ਸਾਹਿਬ ਦਿੱਲੀ ਲਾਈਵ", channelId: "UCm0p8BmL4d914gBefceFxxA", type: "direct" },
+
   { name: "8. ਬੰਗਲਾ ਸਾਹਿਬ ਦਿੱਲੀ ਲਾਈਵ", channelId: "UCA1Jqo-WXVuMgs4WcD5f5Yw", type: "auto-rss" },
-  { name: "9. ਡੀਡੀ ਪੰਜਾਬੀ", url: "https://d3eyhgoylams0m.cloudfront.net/v1/manifest/93ce20f0f52760bf38be911ff4c91ed02aa2fd92/ed7bd2c7-8d10-4051-b397-2f6b90f99acb/20c8ad14-a158-4a42-8889-e032d070856e/2.m3u8", type: "hls" },
+
+  // --- MOVED HAZUR SAHIB TO CHANNEL 9 ---
+  { name: "9. ਹਜ਼ੂਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCuerQ47I9Y2qxr4eIopxbYw", type: "direct" },
+
   { name: "0. ਲਾਈਵ ਟਾਈਮ", type: "time" }
 ];
 
@@ -120,24 +127,18 @@ function loadChannel(index, toggle = 0) {
   const channel = CHANNELS[index];
   safetyTimer = setTimeout(() => { loadingIndicator.style.display = 'none'; }, 2500);
 
-  // --- MODIFIED: Handle Toggle (Click 2) logic for Ch 4 ---
   if (channel.type === 'hybrid') {
     STREAM_DIV.style.display = 'block';
-    
     if (toggle === 1) {
-        // Second Click: Show GOLD style (style-alt), Force 2nd Stream (Offset 1)
         showChannelName(channel.name, 1); 
         fetchLatestVideoId(channel.channelId, 1).then(vidId => {
-             // If 2nd stream exists play it, otherwise default to live_stream ID
              loadYoutubePlayer(vidId || `live_stream?channel=${channel.channelId}`, channel);
         });
     } else {
-        // First Click: Show BLUE style (style-main), Try Direct Live
         showChannelName(channel.name, 0);
         loadYoutubePlayer(`live_stream?channel=${channel.channelId}`, channel);
     }
-  } 
-  else if (channel.type === 'auto-rss') {
+  } else if (channel.type === 'auto-rss') {
     STREAM_DIV.style.display = 'block';
     showChannelName(channel.name, 0);
     fetchLatestVideoId(channel.channelId, 0).then(vidId => {
@@ -175,7 +176,6 @@ function loadYoutubePlayer(videoIdOrParams, channelObj = null) {
 
     STREAM_DIV.innerHTML = `<iframe id="main-player" src="${srcUrl}" allow="autoplay; fullscreen"></iframe>`;
 
-    // Internal helper for fallback logic
     const startFallback = (id) => {
         STREAM_DIV.innerHTML = '<div id="rescue-player-container"></div>';
         new YT.Player('rescue-player-container', {
@@ -203,7 +203,6 @@ function loadYoutubePlayer(videoIdOrParams, channelObj = null) {
                         try { e.target.unMute(); } catch(err){}
                         setTimeout(() => { try { e.target.unMute(); } catch(err){} }, 1000);
                     },
-                    // --- MODIFIED: Handle Stream ENDED (State 0) ---
                     'onStateChange': (e) => {
                         if (e.data === 0 && channelObj && channelObj.fallback) {
                             console.log("Stream Ended. Playing Fallback.");
@@ -211,10 +210,8 @@ function loadYoutubePlayer(videoIdOrParams, channelObj = null) {
                         }
                     },
                     'onError': (e) => {
-                        // Handle Errors (Stream offline/unplayable)
                         if (channelObj && (channelObj.type === 'hybrid' || channelObj.type === 'auto-rss')) {
                             loadingIndicator.style.display = 'block'; 
-                            // Try fetching offset 0 (Auto Live 1)
                             fetchLatestVideoId(channelObj.channelId, 0).then(vidId => {
                                 if(vidId) startFallback(vidId);
                             });
@@ -280,7 +277,3 @@ loadChannel(currentChannel);
 </script>
 </body>
 </html>
-
-
-
-
