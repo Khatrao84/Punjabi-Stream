@@ -59,11 +59,10 @@
 <script>
 // --- CONFIGURATION ---
 const CHANNELS = [
-  // CHANGE 1: Added 'allowToggle: true' to Channel 1 so you can click to switch
   { name: "1. ਪਟਨਾ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UC3nqw1kd4AK1q9e68YUoLDQ", fallback: "TTK7eNuI3M0", type: "direct", allowToggle: true },
   { name: "2. ਅੰਮ੍ਰਿਤਸਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCYn6UEtQ771a_OWSiNBoG8w", type: "hybrid" },
   { name: "3. ਬਾਬਾ ਦੀਪ ਸਿੰਘ ਜੀ ਅੰਮ੍ਰਿਤਸਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCxWx-MPft_7mKrFtN6uOaAA", type: "direct" },
-  { name: "4. ਫਤੇਹਗੜ੍ਹ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCAlr_lKSvMEQNccg5lUmcJQ", type: "hybrid", allowToggle: true },
+  { name: "4. ਫਤੇਹਗੜ੍ਹ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCudVHqnOekwcvpzNpY8_ERw", type: "hybrid", allowToggle: true },
   { name: "5. ਆਨੰਦਪੁਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCSx5035_us8h8DOp_YhQDaw", type: "direct" },
   { name: "6. ਦਮਦਮਾ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCY8jMpyRRcdzSf6uLiU6izQ", type: "direct" },
   { name: "7. ਸੀਸ ਗੰਜ ਸਾਹਿਬ ਦਿੱਲੀ ਲਾਈਵ", channelId: "UCm0p8BmL4d914gBefceFxxA", type: "direct" },
@@ -83,6 +82,9 @@ let currentChannel = parseInt(localStorage.getItem('currentChannel')) || 0;
 let streamToggle = 0; 
 let refreshTimer, loadTimeout, hideTimeout, safetyTimer, hls;
 let lastScrollTime = 0;
+// Unique ID to prevent overlapping channel loads
+let activeLoadId = 0;
+
 const SCROLL_SPEED_MS = 350; 
 const LOAD_DELAY_MS = 600;
 let ytPlayer = null;
@@ -105,61 +107,73 @@ async function fetchLatestVideoId(channelId, offset = 0) {
     }
 }
 
-function loadChannel(index, toggle = 0) {
-  localStorage.setItem('currentChannel', index);
-  loadingIndicator.style.display = 'block';
-  STREAM_DIV.style.display = 'none';
-  HLS_VIDEO.style.display = 'none';
-  TIME_TV.style.display = 'none';
+function cleanupPlayer() {
+  // Hard cleanup to prevent ghost audio
+  if (ytPlayer) { 
+    try { ytPlayer.stopVideo(); ytPlayer.destroy(); } catch(e){} 
+    ytPlayer = null; 
+  }
   STREAM_DIV.innerHTML = '';
-  
   if (hls) { hls.destroy(); hls = null; }
   HLS_VIDEO.pause();
+  HLS_VIDEO.src = "";
+  HLS_VIDEO.style.display = 'none';
+  TIME_TV.style.display = 'none';
   if (safetyTimer) clearTimeout(safetyTimer);
-  if (ytPlayer) { try { ytPlayer.destroy(); } catch(e){} ytPlayer = null; }
+}
+
+function loadChannel(index, toggle = 0) {
+  // Capture the ID for this specific load attempt
+  const thisLoadId = activeLoadId;
+  
+  localStorage.setItem('currentChannel', index);
+  loadingIndicator.style.display = 'block';
+  
+  // Clean up immediately
+  cleanupPlayer();
 
   const channel = CHANNELS[index];
-  safetyTimer = setTimeout(() => { loadingIndicator.style.display = 'none'; }, 2500);
+  safetyTimer = setTimeout(() => { 
+      if (activeLoadId === thisLoadId) loadingIndicator.style.display = 'none'; 
+  }, 3500);
 
   if (channel.type === 'hybrid') {
     STREAM_DIV.style.display = 'block';
     if (toggle === 1) {
         showChannelName(channel.name, 1); 
         fetchLatestVideoId(channel.channelId, 1).then(vidId => {
-             loadYoutubePlayer(vidId || `live_stream?channel=${channel.channelId}`, channel);
+             if (activeLoadId !== thisLoadId) return; // Stop if user switched away
+             loadYoutubePlayer(vidId || `live_stream?channel=${channel.channelId}`, channel, thisLoadId);
         });
     } else {
         showChannelName(channel.name, 0);
-        loadYoutubePlayer(`live_stream?channel=${channel.channelId}`, channel);
+        loadYoutubePlayer(`live_stream?channel=${channel.channelId}`, channel, thisLoadId);
     }
   } else if (channel.type === 'auto-rss') {
     STREAM_DIV.style.display = 'block';
     showChannelName(channel.name, 0);
     fetchLatestVideoId(channel.channelId, 0).then(vidId => {
-         loadYoutubePlayer(vidId || `live_stream?channel=${channel.channelId}`, channel);
+         if (activeLoadId !== thisLoadId) return;
+         loadYoutubePlayer(vidId || `live_stream?channel=${channel.channelId}`, channel, thisLoadId);
     });
-  } 
-  
-  // --- CHANGE 2: Updated Logic for 'direct' to handle Toggle ---
-  else if (channel.type === 'direct') {
+  } else if (channel.type === 'direct') {
     STREAM_DIV.style.display = 'block';
-    
-    // Check if toggle is active AND a fallback ID exists
+    // Logic for Manual Fallback Toggle
     if (toggle === 1 && channel.fallback) {
-        loadYoutubePlayer(channel.fallback, channel); // Load fallback immediately
-        showChannelName(channel.name, 1); // Blue Color
+        loadYoutubePlayer(channel.fallback, channel, thisLoadId);
+        showChannelName(channel.name, 1);
     } else {
-        loadYoutubePlayer(`live_stream?channel=${channel.channelId}`, channel); // Load Live
-        showChannelName(channel.name, 0); // Gold Color
+        loadYoutubePlayer(`live_stream?channel=${channel.channelId}`, channel, thisLoadId);
+        showChannelName(channel.name, 0);
     }
-  } 
-  
-  else if (channel.type === 'iframe') {
+  } else if (channel.type === 'iframe') {
+    if (activeLoadId !== thisLoadId) return;
     STREAM_DIV.style.display = 'block';
     STREAM_DIV.innerHTML = `<iframe src="${channel.url}" allow="autoplay; fullscreen"></iframe>`;
     STREAM_DIV.querySelector('iframe').onload = () => loadingIndicator.style.display = 'none';
     showChannelName(channel.name, 0);
   } else if (channel.type === 'hls') {
+    if (activeLoadId !== thisLoadId) return;
     HLS_VIDEO.style.display = 'block';
     if (Hls.isSupported()) {
       hls = new Hls(); hls.loadSource(channel.url); hls.attachMedia(HLS_VIDEO);
@@ -174,7 +188,10 @@ function loadChannel(index, toggle = 0) {
   setupAutoRefresh();
 }
 
-function loadYoutubePlayer(videoIdOrParams, channelObj = null) {
+function loadYoutubePlayer(videoIdOrParams, channelObj = null, loadId) {
+    // DOUBLE CHECK: Stop if the user switched channel while function was running
+    if (loadId !== activeLoadId) return;
+
     let domain = "https://www.youtube.com/embed/";
     let srcUrl = videoIdOrParams.includes('channel=') 
         ? `${domain}${videoIdOrParams}&autoplay=1&mute=1&modestbranding=1&controls=0&rel=0&enablejsapi=1&origin=${window.location.origin}`
@@ -183,6 +200,7 @@ function loadYoutubePlayer(videoIdOrParams, channelObj = null) {
     STREAM_DIV.innerHTML = `<iframe id="main-player" src="${srcUrl}" allow="autoplay; fullscreen"></iframe>`;
 
     const startFallback = (id) => {
+        if (loadId !== activeLoadId) return; // Safety Check
         STREAM_DIV.innerHTML = '<div id="rescue-player-container"></div>';
         new YT.Player('rescue-player-container', {
             height: '100%', width: '100%',
@@ -190,6 +208,7 @@ function loadYoutubePlayer(videoIdOrParams, channelObj = null) {
             playerVars: { 'autoplay': 1, 'mute': 1, 'modestbranding': 1, 'controls': 0, 'rel': 0 },
             events: {
                 'onReady': (ev) => {
+                    if (loadId !== activeLoadId) return; 
                     loadingIndicator.style.display = 'none';
                     ev.target.playVideo();
                     try { ev.target.unMute(); } catch(err){}
@@ -200,25 +219,32 @@ function loadYoutubePlayer(videoIdOrParams, channelObj = null) {
     };
 
     setTimeout(() => {
+        // TRIPLE CHECK: Stop if user switched channel during the timeout
+        if (loadId !== activeLoadId) return;
+
         if (window.YT && YT.Player) {
             ytPlayer = new YT.Player('main-player', {
                 events: {
                     'onReady': (e) => { 
+                        if (loadId !== activeLoadId) return;
                         loadingIndicator.style.display = 'none'; 
                         e.target.playVideo();
                         try { e.target.unMute(); } catch(err){}
                         setTimeout(() => { try { e.target.unMute(); } catch(err){} }, 1000);
                     },
                     'onStateChange': (e) => {
+                        if (loadId !== activeLoadId) return;
                         if (e.data === 0 && channelObj && channelObj.fallback) {
                             console.log("Stream Ended. Playing Fallback.");
                             startFallback(channelObj.fallback);
                         }
                     },
                     'onError': (e) => {
+                        if (loadId !== activeLoadId) return;
                         if (channelObj && (channelObj.type === 'hybrid' || channelObj.type === 'auto-rss')) {
                             loadingIndicator.style.display = 'block'; 
                             fetchLatestVideoId(channelObj.channelId, 0).then(vidId => {
+                                if (loadId !== activeLoadId) return;
                                 if(vidId) startFallback(vidId);
                             });
                         } else if (channelObj && channelObj.fallback) {
@@ -247,7 +273,7 @@ function queueChannelLoad(index) {
   const isSame = (currentChannel === index);
   const channel = CHANNELS[index];
   
-  // --- CHANGE 3: Removed strict check for 'hybrid' so 'direct' can toggle too ---
+  // Logic for Toggle
   if (isSame && channel.allowToggle) {
       streamToggle = (streamToggle === 0) ? 1 : 0;
   } else {
@@ -256,8 +282,19 @@ function queueChannelLoad(index) {
   
   currentChannel = index;
   showChannelName(channel.name, streamToggle);
+  
   if (loadTimeout) clearTimeout(loadTimeout);
-  loadTimeout = setTimeout(() => { loadChannel(index, streamToggle); }, LOAD_DELAY_MS);
+  
+  // Update Global Load ID -> This invalidates any previous loading attempts
+  activeLoadId++;
+  const thisId = activeLoadId;
+
+  loadTimeout = setTimeout(() => { 
+      // Ensure we only load if this ID is still valid
+      if (thisId === activeLoadId) {
+          loadChannel(index, streamToggle); 
+      }
+  }, LOAD_DELAY_MS);
 }
 
 window.addEventListener('keydown', (e) => {
@@ -282,11 +319,11 @@ function updateLocalTime() {
   document.querySelector('#time-tv .date').textContent = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 }
 setInterval(updateLocalTime, 1000); updateLocalTime();
+// Trigger initial load
+activeLoadId++;
 loadChannel(currentChannel);
 </script>
 </body>
 </html>
-
-
 
 
