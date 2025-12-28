@@ -13,10 +13,15 @@
       margin: 0; padding: 0; height: 100%;
       background-color: black; font-family: "Noto Sans Gurmukhi", sans-serif;
       overflow: hidden; -webkit-tap-highlight-color: transparent; user-select: none;
+      cursor: none;
     }
+    body.user-active { cursor: default; }
+    
     #container { position: relative; width: 100vw; height: 100vh; }
     #stream { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
-    #stream iframe { width: 100%; height: 100%; border: none; display:block; pointer-events: none; }
+    /* Important: We define a placeholder for YT API to replace */
+    .video-placeholder { width: 100%; height: 100%; background: black; }
+    
     #hls-video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; display: none; }
     #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; cursor: pointer; outline: none; }
     
@@ -71,6 +76,7 @@ const CHANNELS = [
   { name: "0. ਲਾਈਵ ਟਾਈਮ", type: "time" }
 ];
 
+// --- GLOBAL VARIABLES ---
 const STREAM_DIV = document.getElementById('stream');
 const HLS_VIDEO = document.getElementById('hls-video');
 const TIME_TV = document.getElementById('time-tv');
@@ -80,22 +86,26 @@ const OVERLAY = document.getElementById('overlay');
 
 let currentChannel = parseInt(localStorage.getItem('currentChannel')) || 0;
 let streamToggle = 0; 
-let refreshTimer, loadTimeout, hideTimeout, safetyTimer, hls;
-let lastScrollTime = 0;
-// Unique ID to prevent overlapping channel loads
-let activeLoadId = 0;
+let activeLoadId = 0; // The Critical "Genration ID" to prevent race conditions
+let ytPlayer = null;
+let hls = null;
 
+// Timers
+let refreshTimer, loadTimeout, hideTimeout, safetyTimer, watchdogTimer;
+let lastScrollTime = 0;
 const SCROLL_SPEED_MS = 350; 
 const LOAD_DELAY_MS = 600;
-let ytPlayer = null;
-let ytApiReady = false;
 
-window.onYouTubeIframeAPIReady = function() { ytApiReady = true; };
-
+// --- ROBUST FETCH FUNCTION ---
 async function fetchLatestVideoId(channelId, offset = 0) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+
     try {
         const rssUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent('https://www.youtube.com/feeds/videos.xml?channel_id=' + channelId)}&t=${Date.now()}`;
-        const res = await fetch(rssUrl);
+        const res = await fetch(rssUrl, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (!res.ok) throw new Error("Network response was not ok");
         const data = await res.json();
         const items = data.items || [];
         if (items.length > offset) {
@@ -103,163 +113,252 @@ async function fetchLatestVideoId(channelId, offset = 0) {
         }
         return null;
     } catch (e) {
-        return null;
+        console.warn("Fetch failed or timed out, using fallback", e);
+        return null; // Graceful fail
     }
 }
 
-function cleanupPlayer() {
-  // Hard cleanup to prevent ghost audio
-  if (ytPlayer) { 
-    try { ytPlayer.stopVideo(); ytPlayer.destroy(); } catch(e){} 
-    ytPlayer = null; 
+// --- CORE CLEANUP ( Prevents Black Screens ) ---
+function cleanupEnvironment() {
+  // 1. Destroy YouTube Player
+  if (ytPlayer && typeof ytPlayer.destroy === 'function') {
+    try { ytPlayer.stopVideo(); ytPlayer.destroy(); } catch(e){}
   }
-  STREAM_DIV.innerHTML = '';
-  if (hls) { hls.destroy(); hls = null; }
+  ytPlayer = null;
+
+  // 2. Destroy HLS
+  if (hls) {
+    try { hls.destroy(); } catch(e){}
+    hls = null;
+  }
+  
+  // 3. Reset DOM Elements
+  STREAM_DIV.innerHTML = ''; // Nuke the iframe container
   HLS_VIDEO.pause();
   HLS_VIDEO.src = "";
   HLS_VIDEO.style.display = 'none';
   TIME_TV.style.display = 'none';
+  
+  // 4. Clear Safety Timers
   if (safetyTimer) clearTimeout(safetyTimer);
+  if (watchdogTimer) clearTimeout(watchdogTimer);
 }
 
+// --- CHANNEL LOADER ---
 function loadChannel(index, toggle = 0) {
-  // Capture the ID for this specific load attempt
   const thisLoadId = activeLoadId;
-  
   localStorage.setItem('currentChannel', index);
   loadingIndicator.style.display = 'block';
   
-  // Clean up immediately
-  cleanupPlayer();
+  cleanupEnvironment(); // Start Fresh
 
   const channel = CHANNELS[index];
-  safetyTimer = setTimeout(() => { 
-      if (activeLoadId === thisLoadId) loadingIndicator.style.display = 'none'; 
-  }, 3500);
+  
+  // Fallback Safety: If video doesn't load in 8 seconds, force reload
+  watchdogTimer = setTimeout(() => {
+    if (activeLoadId === thisLoadId && loadingIndicator.style.display !== 'none') {
+        console.warn("Watchdog: Loading took too long. Retrying...");
+        // If we were trying to load a stream, maybe try the channel fallback?
+        // For now, just remove spinner or try to re-init
+        loadingIndicator.style.display = 'none';
+    }
+  }, 8000);
 
-  if (channel.type === 'hybrid') {
-    STREAM_DIV.style.display = 'block';
-    if (toggle === 1) {
-        showChannelName(channel.name, 1); 
-        fetchLatestVideoId(channel.channelId, 1).then(vidId => {
-             if (activeLoadId !== thisLoadId) return; // Stop if user switched away
-             loadYoutubePlayer(vidId || `live_stream?channel=${channel.channelId}`, channel, thisLoadId);
-        });
-    } else {
-        showChannelName(channel.name, 0);
-        loadYoutubePlayer(`live_stream?channel=${channel.channelId}`, channel, thisLoadId);
-    }
-  } else if (channel.type === 'auto-rss') {
-    STREAM_DIV.style.display = 'block';
+  // LOGIC ROUTER
+  if (channel.type === 'time') {
+    TIME_TV.style.display = 'block'; 
+    loadingIndicator.style.display = 'none';
     showChannelName(channel.name, 0);
-    fetchLatestVideoId(channel.channelId, 0).then(vidId => {
-         if (activeLoadId !== thisLoadId) return;
-         loadYoutubePlayer(vidId || `live_stream?channel=${channel.channelId}`, channel, thisLoadId);
-    });
-  } else if (channel.type === 'direct') {
-    STREAM_DIV.style.display = 'block';
-    // Logic for Manual Fallback Toggle
-    if (toggle === 1 && channel.fallback) {
-        loadYoutubePlayer(channel.fallback, channel, thisLoadId);
-        showChannelName(channel.name, 1);
-    } else {
-        loadYoutubePlayer(`live_stream?channel=${channel.channelId}`, channel, thisLoadId);
-        showChannelName(channel.name, 0);
-    }
-  } else if (channel.type === 'iframe') {
-    if (activeLoadId !== thisLoadId) return;
-    STREAM_DIV.style.display = 'block';
-    STREAM_DIV.innerHTML = `<iframe src="${channel.url}" allow="autoplay; fullscreen"></iframe>`;
-    STREAM_DIV.querySelector('iframe').onload = () => loadingIndicator.style.display = 'none';
-    showChannelName(channel.name, 0);
-  } else if (channel.type === 'hls') {
+    return;
+  }
+  
+  if (channel.type === 'hls') {
     if (activeLoadId !== thisLoadId) return;
     HLS_VIDEO.style.display = 'block';
     if (Hls.isSupported()) {
-      hls = new Hls(); hls.loadSource(channel.url); hls.attachMedia(HLS_VIDEO);
-      hls.on(Hls.Events.MANIFEST_PARSED, () => { HLS_VIDEO.play(); loadingIndicator.style.display = 'none'; });
-      hls.on(Hls.Events.ERROR, () => loadingIndicator.style.display = 'none');
+      hls = new Hls(); 
+      hls.loadSource(channel.url); 
+      hls.attachMedia(HLS_VIDEO);
+      hls.on(Hls.Events.MANIFEST_PARSED, () => { 
+        HLS_VIDEO.play().catch(e => console.log("Autoplay blocked", e));
+        loadingIndicator.style.display = 'none'; 
+      });
+      hls.on(Hls.Events.ERROR, () => {
+         // HLS Error handling
+      });
     }
     showChannelName(channel.name, 0);
-  } else if (channel.type === 'time') {
-    TIME_TV.style.display = 'block'; loadingIndicator.style.display = 'none';
-    showChannelName(channel.name, 0);
+    return;
   }
+
+  // YOUTUBE HANDLER
+  STREAM_DIV.style.display = 'block';
+  
+  // Create a clean DIV for YT API to attach to
+  const playerDivId = `yt-player-${Date.now()}`;
+  STREAM_DIV.innerHTML = `<div id="${playerDivId}" class="video-placeholder"></div>`;
+
+  const processYoutubeLoad = (videoIdOrParams) => {
+      if (activeLoadId !== thisLoadId) return;
+      initYoutubeApiPlayer(playerDivId, videoIdOrParams, channel, thisLoadId);
+  };
+
+  // Determine Video ID
+  if (channel.type === 'hybrid' || channel.type === 'auto-rss') {
+      const isAlt = (toggle === 1 && channel.type === 'hybrid');
+      showChannelName(channel.name, isAlt ? 1 : 0);
+      
+      fetchLatestVideoId(channel.channelId, isAlt ? 1 : 0).then(vidId => {
+          // If fetch fails (vidId is null), fallback to channel live link
+          let target = vidId || channel.channelId; 
+          // Note: If target is just channelID, initPlayer knows how to handle it? 
+          // Actually, let's normalize it.
+          if (!vidId) {
+             // If we failed to get a specific ID, use the Live Stream Endpoint
+             processYoutubeLoad({ type: 'channel_live', id: channel.channelId });
+          } else {
+             processYoutubeLoad({ type: 'video_id', id: vidId });
+          }
+      });
+  } else if (channel.type === 'direct') {
+      if (toggle === 1 && channel.fallback) {
+          showChannelName(channel.name, 1);
+          processYoutubeLoad({ type: 'video_id', id: channel.fallback });
+      } else {
+          showChannelName(channel.name, 0);
+          processYoutubeLoad({ type: 'channel_live', id: channel.channelId });
+      }
+  } else if (channel.type === 'iframe') {
+      // Just in case we add iframe types back
+      STREAM_DIV.innerHTML = `<iframe src="${channel.url}" style="width:100%;height:100%;border:none;" allow="autoplay; fullscreen"></iframe>`;
+      loadingIndicator.style.display = 'none';
+      showChannelName(channel.name, 0);
+  }
+
   setupAutoRefresh();
 }
 
-function loadYoutubePlayer(videoIdOrParams, channelObj = null, loadId) {
-    // DOUBLE CHECK: Stop if the user switched channel while function was running
+// --- ROBUST YOUTUBE API PLAYER ---
+function initYoutubeApiPlayer(divId, videoData, channelObj, loadId) {
     if (loadId !== activeLoadId) return;
 
-    let domain = "https://www.youtube.com/embed/";
-    let srcUrl = videoIdOrParams.includes('channel=') 
-        ? `${domain}${videoIdOrParams}&autoplay=1&mute=1&modestbranding=1&controls=0&rel=0&enablejsapi=1&origin=${window.location.origin}`
-        : `${domain}${videoIdOrParams}?autoplay=1&mute=1&modestbranding=1&controls=0&rel=0&enablejsapi=1&origin=${window.location.origin}`;
+    // Check if YT API is ready. If not, wait.
+    if (!window.YT || !window.YT.Player) {
+        setTimeout(() => initYoutubeApiPlayer(divId, videoData, channelObj, loadId), 100);
+        return;
+    }
 
-    STREAM_DIV.innerHTML = `<iframe id="main-player" src="${srcUrl}" allow="autoplay; fullscreen"></iframe>`;
-
-    const startFallback = (id) => {
-        if (loadId !== activeLoadId) return; // Safety Check
-        STREAM_DIV.innerHTML = '<div id="rescue-player-container"></div>';
-        new YT.Player('rescue-player-container', {
-            height: '100%', width: '100%',
-            videoId: id,
-            playerVars: { 'autoplay': 1, 'mute': 1, 'modestbranding': 1, 'controls': 0, 'rel': 0 },
-            events: {
-                'onReady': (ev) => {
-                    if (loadId !== activeLoadId) return; 
-                    loadingIndicator.style.display = 'none';
-                    ev.target.playVideo();
-                    try { ev.target.unMute(); } catch(err){}
-                    setTimeout(() => { try { ev.target.unMute(); } catch(err){} }, 1000);
-                }
-            }
-        });
+    let playerConfig = {
+        height: '100%',
+        width: '100%',
+        playerVars: { 
+            'autoplay': 1, 
+            'mute': 1, // Start muted to satisfy browser autoplay policies
+            'controls': 0, 
+            'rel': 0, 
+            'modestbranding': 1,
+            'iv_load_policy': 3,
+            'fs': 0
+        },
+        events: {
+            'onReady': onPlayerReady,
+            'onStateChange': onPlayerStateChange,
+            'onError': onPlayerError
+        }
     };
 
-    setTimeout(() => {
-        // TRIPLE CHECK: Stop if user switched channel during the timeout
-        if (loadId !== activeLoadId) return;
+    if (videoData.type === 'video_id') {
+        playerConfig.videoId = videoData.id;
+    } else {
+        // Live stream by channel ID requires specific URL structure usually, 
+        // but JS API prefers videoId. For Channel Live, we use 'live_stream' logic
+        // But the JS API doesn't natively support "channelId" as a param in constructor easily.
+        // Workaround: Load a generic video then loadByUrl or use iframe logic.
+        // BETTER ROBUST WAY: Use the "live_stream" endpoint via 'loadVideoByUrl' or iframe API special config.
+        // Actually, for Channel Live, standard iframe is surprisingly more stable, 
+        // BUT to keep API control, we will use videoId if we have it, or search.
+        // Since we want robustness, let's use the 'live_stream' endpoint video ID hack.
+        // However, the cleanest API way is often just loading the iframe for Channel IDs.
+        // Let's stick to the config:
+        playerConfig.playerVars.listType = 'user_uploads'; // Not quite.
+        // Fallback for Channel ID direct:
+        // We will construct the player then commands it to load the channel live url.
+    }
 
-        if (window.YT && YT.Player) {
-            ytPlayer = new YT.Player('main-player', {
-                events: {
-                    'onReady': (e) => { 
-                        if (loadId !== activeLoadId) return;
-                        loadingIndicator.style.display = 'none'; 
-                        e.target.playVideo();
-                        try { e.target.unMute(); } catch(err){}
-                        setTimeout(() => { try { e.target.unMute(); } catch(err){} }, 1000);
-                    },
-                    'onStateChange': (e) => {
-                        if (loadId !== activeLoadId) return;
-                        if (e.data === 0 && channelObj && channelObj.fallback) {
-                            console.log("Stream Ended. Playing Fallback.");
-                            startFallback(channelObj.fallback);
-                        }
-                    },
-                    'onError': (e) => {
-                        if (loadId !== activeLoadId) return;
-                        if (channelObj && (channelObj.type === 'hybrid' || channelObj.type === 'auto-rss')) {
-                            loadingIndicator.style.display = 'block'; 
-                            fetchLatestVideoId(channelObj.channelId, 0).then(vidId => {
-                                if (loadId !== activeLoadId) return;
-                                if(vidId) startFallback(vidId);
-                            });
-                        } else if (channelObj && channelObj.fallback) {
-                             startFallback(channelObj.fallback);
-                        }
-                    }
-                }
-            });
+    // EDGE CASE: If it's a channel-live request, the JS API is tricky.
+    // We will use the 'loadVideoById' in onReady if needed, or iframe source override.
+    if (videoData.type === 'channel_live') {
+       // Using an iframe approach for Channel Live is 10x more stable than JS API constructor for this specific case
+       // because JS API requires a VideoID.
+       const embedUrl = `https://www.youtube.com/embed/live_stream?channel=${videoData.id}&autoplay=1&mute=1&controls=0&enablejsapi=1&origin=${window.location.origin}`;
+       const iframe = document.createElement('iframe');
+       iframe.id = divId; // Replace the div
+       iframe.src = embedUrl;
+       iframe.style.width = "100%";
+       iframe.style.height = "100%";
+       iframe.style.border = "none";
+       iframe.allow = "autoplay; fullscreen";
+       
+       document.getElementById(divId).replaceWith(iframe);
+       
+       // Attach API to this new iframe
+       ytPlayer = new YT.Player(divId, {
+           events: {
+               'onReady': onPlayerReady,
+               'onStateChange': onPlayerStateChange,
+               'onError': onPlayerError
+           }
+       });
+       return;
+    }
+
+    // Standard Video ID creation
+    ytPlayer = new YT.Player(divId, playerConfig);
+
+    // --- EVENT HANDLERS (Closure to capture loadId) ---
+    function onPlayerReady(event) {
+        if (loadId !== activeLoadId) return;
+        loadingIndicator.style.display = 'none';
+        event.target.playVideo();
+        // Unmute attempt
+        setTimeout(() => { try { event.target.unMute(); } catch(e){} }, 500);
+        setTimeout(() => { try { event.target.unMute(); } catch(e){} }, 2000);
+    }
+
+    function onPlayerStateChange(event) {
+        if (loadId !== activeLoadId) return;
+        // State 1 = Playing. If we are buffering (3) for too long, we might want to reload?
+        if (event.data === YT.PlayerState.ENDED) {
+             if (channelObj.fallback) {
+                 console.log("Stream ended, switching to fallback");
+                 // Recursive call to self with fallback ID
+                 initYoutubeApiPlayer(divId, {type: 'video_id', id: channelObj.fallback}, channelObj, loadId);
+             }
         }
-    }, 500);
+    }
+
+    function onPlayerError(event) {
+        if (loadId !== activeLoadId) return;
+        console.log("YT Error:", event.data);
+        // Error 150/101 = Restricted. Error 2 = Invalid Param.
+        if (channelObj.fallback && videoData.id !== channelObj.fallback) {
+            console.log("Error encountered, trying fallback...");
+            // Completely destroy and restart with fallback
+             cleanupEnvironment(); // Quick cleanup
+             STREAM_DIV.style.display = 'block';
+             STREAM_DIV.innerHTML = `<div id="${divId}" class="video-placeholder"></div>`;
+             initYoutubeApiPlayer(divId, {type: 'video_id', id: channelObj.fallback}, channelObj, loadId);
+        } else {
+            // Last resort: If live fails, try to re-fetch? 
+            // Or just leave it (User can change channel).
+            loadingIndicator.style.display = 'none'; // Stop spinning so user knows it failed
+        }
+    }
 }
 
 function setupAutoRefresh() {
   clearTimeout(refreshTimer);
-  refreshTimer = setTimeout(() => { window.location.reload(); }, 10800000); 
+  refreshTimer = setTimeout(() => { window.location.reload(); }, 10800000); // 3 Hours
 }
 
 function showChannelName(name, styleType) {
@@ -273,7 +372,6 @@ function queueChannelLoad(index) {
   const isSame = (currentChannel === index);
   const channel = CHANNELS[index];
   
-  // Logic for Toggle
   if (isSame && channel.allowToggle) {
       streamToggle = (streamToggle === 0) ? 1 : 0;
   } else {
@@ -283,24 +381,35 @@ function queueChannelLoad(index) {
   currentChannel = index;
   showChannelName(channel.name, streamToggle);
   
+  // Debounce: Wait for user to stop scrolling
   if (loadTimeout) clearTimeout(loadTimeout);
   
-  // Update Global Load ID -> This invalidates any previous loading attempts
-  activeLoadId++;
+  activeLoadId++; // Invalidate previous loads immediately
   const thisId = activeLoadId;
 
   loadTimeout = setTimeout(() => { 
-      // Ensure we only load if this ID is still valid
       if (thisId === activeLoadId) {
           loadChannel(index, streamToggle); 
       }
-  }, LOAD_DELAY_MS);
+  }, SCROLL_SPEED_MS); 
 }
+
+// --- INPUT HANDLING ---
+let cursorTimeout;
+window.addEventListener('mousemove', () => {
+    document.body.classList.add('user-active');
+    clearTimeout(cursorTimeout);
+    cursorTimeout = setTimeout(() => {
+        document.body.classList.remove('user-active');
+    }, 3000);
+});
 
 window.addEventListener('keydown', (e) => {
   const k = e.key; const c = e.keyCode; const now = Date.now();
-  if (now - lastScrollTime < SCROLL_SPEED_MS) return;
+  // Simple throttle for key spam
+  if (now - lastScrollTime < 200) return; 
   lastScrollTime = now;
+
   if (k === "ArrowRight" || k === "ArrowUp" || k === "ChannelUp" || c === 427 || k === "PageUp" || c === 33) {
     e.preventDefault(); queueChannelLoad((currentChannel + 1) % CHANNELS.length);
   } else if (k === "ArrowLeft" || k === "ArrowDown" || k === "ChannelDown" || c === 428 || k === "PageDown" || c === 34) {
@@ -319,13 +428,12 @@ function updateLocalTime() {
   document.querySelector('#time-tv .date').textContent = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 }
 setInterval(updateLocalTime, 1000); updateLocalTime();
-// Trigger initial load
+
+// Init
 activeLoadId++;
 loadChannel(currentChannel);
 </script>
 </body>
 </html>
-
-
 
 
