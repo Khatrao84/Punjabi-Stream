@@ -3,6 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <title>Gurbani Stream</title>
+  
+  <link rel="preconnect" href="https://www.youtube.com">
+  <link rel="preconnect" href="https://www.google.com">
+  <link rel="preconnect" href="https://api.rss2json.com">
+  <link rel="dns-prefetch" href="https://www.youtube.com">
+  <link rel="dns-prefetch" href="https://api.rss2json.com">
+
   <link rel="icon" href="https://i.postimg.cc/FRDPFKpY/favicon-96x96.png" type="image/png">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Gurmukhi:wght@400;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
@@ -66,12 +73,12 @@
 const CHANNELS = [
   { name: "1. ਪਟਨਾ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UC3nqw1kd4AK1q9e68YUoLDQ", fallback: "TTK7eNuI3M0", type: "direct", allowToggle: true },
   
-  // CHANGED: Channel 2 (Direct -> RSS Fallback, NO Toggle)
+  // CH 2: Direct-RSS logic (Direct -> RSS Fallback) but NO toggle
   { name: "2. ਅੰਮ੍ਰਿਤਸਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCYn6UEtQ771a_OWSiNBoG8w", type: "direct-rss" },
 
   { name: "3. ਬਾਬਾ ਦੀਪ ਸਿੰਘ ਜੀ ਅੰਮ੍ਰਿਤਸਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCxWx-MPft_7mKrFtN6uOaAA", type: "direct" },
   
-  // CHANGED: Channel 4 (Direct -> RSS Fallback, WITH Toggle for 2nd stream)
+  // CH 4: Direct-RSS logic WITH toggle for 2nd stream
   { name: "4. ਫਤੇਹਗੜ੍ਹ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCudVHqnOekwcvpzNpY8_ERw", type: "direct-rss", allowToggle: true },
 
   { name: "5. ਆਨੰਦਪੁਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCSx5035_us8h8DOp_YhQDaw", type: "direct" },
@@ -100,7 +107,6 @@ let hls = null;
 let refreshTimer, loadTimeout, hideTimeout, safetyTimer, watchdogTimer;
 let lastScrollTime = 0;
 const SCROLL_SPEED_MS = 350; 
-const LOAD_DELAY_MS = 600;
 
 // --- ROBUST FETCH FUNCTION ---
 async function fetchLatestVideoId(channelId, offset = 0) {
@@ -191,7 +197,7 @@ function loadChannel(index, toggle = 0) {
       initYoutubeApiPlayer(playerDivId, videoIdOrParams, channel, thisLoadId);
   };
 
-  // --- NEW LOGIC FOR CH 2 and 4 (Direct-RSS) ---
+  // --- LOGIC FOR DIRECT-RSS (Ch 2 & 4) ---
   if (channel.type === 'direct-rss') {
       if (toggle === 1) {
           // Toggle Active: RSS Stream #2 (Offset 1)
@@ -201,7 +207,7 @@ function loadChannel(index, toggle = 0) {
               else processYoutubeLoad({ type: 'channel_live', id: channel.channelId });
           });
       } else {
-          // Toggle Inactive: Direct Stream (RSS Fallback is in Error Handler)
+          // Toggle Inactive: Direct Stream (RSS Fallback handled in Error Handler)
           showChannelName(channel.name, 0);
           processYoutubeLoad({ type: 'channel_live', id: channel.channelId });
       }
@@ -387,3 +393,7 @@ loadChannel(currentChannel);
 </script>
 </body>
 </html>
+
+
+
+
