@@ -17,44 +17,135 @@
 
   <style>
     html, body {
-      margin: 0; padding: 0; height: 100%;
-      background-color: black; font-family: "Noto Sans Gurmukhi", sans-serif;
-      overflow: hidden; -webkit-tap-highlight-color: transparent; user-select: none;
+      margin: 0; 
+      padding: 0; 
+      height: 100%;
+      background-color: black; 
+      font-family: "Noto Sans Gurmukhi", sans-serif;
+      overflow: hidden; 
+      -webkit-tap-highlight-color: transparent; 
+      user-select: none;
       cursor: none;
     }
-    body.user-active { cursor: default; }
+    body.user-active { 
+      cursor: default; 
+    }
     
-    #container { position: relative; width: 100vw; height: 100vh; }
-    #stream { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
-    .video-placeholder { width: 100%; height: 100%; background: black; }
+    #container { 
+      position: relative; 
+      width: 100vw; 
+      height: 100vh; 
+    }
+
+    #stream { 
+      position: absolute; 
+      top: 0; 
+      left: 0; 
+      width: 100%; 
+      height: 100%; 
+      z-index: 0; 
+    }
+
+    /* Important: We define a placeholder for YT API to replace */
+    .video-placeholder { 
+      width: 100%; 
+      height: 100%; 
+      background: black; 
+    }
     
-    #hls-video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; display: none; }
-    #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; cursor: pointer; outline: none; }
+    #hls-video { 
+      position: absolute; 
+      top: 0; 
+      left: 0; 
+      width: 100%; 
+      height: 100%; 
+      object-fit: cover; 
+      z-index: 1; 
+      display: none; 
+    }
+
+    #overlay { 
+      position: absolute; 
+      top: 0; 
+      left: 0; 
+      width: 100%; 
+      height: 100%; 
+      z-index: 2; 
+      cursor: pointer; 
+      outline: none; 
+    }
     
     #channelName {
-      position: absolute; bottom: -80px; left: 0; width: 100%;
-      padding: 15px 20px; font-size: 24px; font-weight: bold;
-      text-align: center; opacity: 0; transition: all 0.6s ease; z-index: 3;
+      position: absolute; 
+      bottom: -80px; 
+      left: 0; 
+      width: 100%;
+      padding: 15px 20px; 
+      font-size: 24px; 
+      font-weight: bold;
+      text-align: center; 
+      opacity: 0; 
+      transition: all 0.6s ease; 
+      z-index: 3;
     }
-    .style-main { background-color: rgba(0, 41, 107, 0.9) !important; color: #FFD700 !important; }
-    .style-alt { background-color: #FFD700 !important; color: #00296B !important; }
-    #channelName.show { bottom: 0; opacity: 1; }
+    .style-main { 
+      background-color: rgba(0, 41, 107, 0.9) !important; 
+      color: #FFD700 !important; 
+    }
+    .style-alt { 
+      background-color: #FFD700 !important; 
+      color: #00296B !important; 
+    }
+    #channelName.show { 
+      bottom: 0; 
+      opacity: 1; 
+    }
     
     .loading {
-      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      width: 60px; height: 60px; border: 6px solid rgba(255, 213, 0, 0.2);
-      border-radius: 50%; border-top-color: #ffd500;
-      animation: spin 1s linear infinite; z-index: 4; display: none;
+      position: absolute; 
+      top: 50%; 
+      left: 50%; 
+      transform: translate(-50%, -50%);
+      width: 60px; 
+      height: 60px; 
+      border: 6px solid rgba(255, 213, 0, 0.2);
+      border-radius: 50%; 
+      border-top-color: #ffd500;
+      animation: spin 1s linear infinite; 
+      z-index: 4; 
+      display: none;
     }
-    @keyframes spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+    @keyframes spin { 
+      to { transform: translate(-50%, -50%) rotate(360deg); } 
+    }
     
     #time-tv {
-      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-      display: none; z-index: 1; background: url("https://i.postimg.cc/053WPD28/haarimandr.png") no-repeat center center;
-      background-size: cover; font-family: "Arial Black", sans-serif;
+      position: absolute; 
+      top: 0; 
+      left: 0; 
+      width: 100%; 
+      height: 100%;
+      display: none; 
+      z-index: 1; 
+      background: url("https://i.postimg.cc/053WPD28/haarimandr.png") no-repeat center center;
+      background-size: cover; 
+      font-family: "Arial Black", sans-serif;
     }
-    #time-tv .clock { position: absolute; top: 6%; right: 3%; font-size: 8.7vw; color: #FFD700; text-shadow: 0 0 10px #FFD700; }
-    #time-tv .date { position: absolute; top: 2%; right: 3.5%; font-size: 3vw; color: #FFE066; }
+    #time-tv .clock { 
+      position: absolute; 
+      top: 6%; 
+      right: 3%; 
+      font-size: 8.7vw; 
+      color: #FFD700; 
+      text-shadow: 0 0 10px #FFD700; 
+    }
+    #time-tv .date { 
+      position: absolute; 
+      top: 2%; 
+      right: 3.5%; 
+      font-size: 3vw; 
+      color: #FFE066; 
+    }
   </style>
 </head>
 <body>
@@ -70,12 +161,16 @@
 <script>
 // --- CONFIGURATION ---
 const CHANNELS = [
-  // CH 1: Fallback (TTK...) will play if direct stream ENDS or ERRORs
   { name: "1. ਪਟਨਾ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UC3nqw1kd4AK1q9e68YUoLDQ", fallback: "TTK7eNuI3M0", type: "direct", allowToggle: true },
   
+  // CH 2: Direct -> Fail -> RSS (No Toggle)
   { name: "2. ਅੰਮ੍ਰਿਤਸਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCYn6UEtQ771a_OWSiNBoG8w", type: "direct-rss" },
+
   { name: "3. ਬਾਬਾ ਦੀਪ ਸਿੰਘ ਜੀ ਅੰਮ੍ਰਿਤਸਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCxWx-MPft_7mKrFtN6uOaAA", type: "direct" },
+  
+  // CH 4: Direct -> Fail -> RSS (With Toggle for 2nd stream)
   { name: "4. ਫਤੇਹਗੜ੍ਹ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCudVHqnOekwcvpzNpY8_ERw", type: "direct-rss", allowToggle: true },
+
   { name: "5. ਆਨੰਦਪੁਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCSx5035_us8h8DOp_YhQDaw", type: "direct" },
   { name: "6. ਦਮਦਮਾ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCY8jMpyRRcdzSf6uLiU6izQ", type: "direct" },
   { name: "7. ਸੀਸ ਗੰਜ ਸਾਹਿਬ ਦਿੱਲੀ ਲਾਈਵ", channelId: "UCm0p8BmL4d914gBefceFxxA", type: "direct" },
@@ -94,17 +189,21 @@ const OVERLAY = document.getElementById('overlay');
 
 let currentChannel = parseInt(localStorage.getItem('currentChannel')) || 0;
 let streamToggle = 0; 
-let activeLoadId = 0; 
+let activeLoadId = 0; // The Critical "Generation ID" to prevent race conditions
 let ytPlayer = null;
 let hls = null;
+
+// Timers
 let refreshTimer, loadTimeout, hideTimeout, safetyTimer, watchdogTimer;
 let lastScrollTime = 0;
 const SCROLL_SPEED_MS = 350; 
+const LOAD_DELAY_MS = 600;
 
-// --- FETCH FUNCTION ---
+// --- ROBUST FETCH FUNCTION ---
 async function fetchLatestVideoId(channelId, offset = 0) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000); 
+
     try {
         const rssUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent('https://www.youtube.com/feeds/videos.xml?channel_id=' + channelId)}&t=${Date.now()}`;
         const res = await fetch(rssUrl, { signal: controller.signal });
@@ -112,24 +211,34 @@ async function fetchLatestVideoId(channelId, offset = 0) {
         if (!res.ok) throw new Error("Network response was not ok");
         const data = await res.json();
         const items = data.items || [];
-        if (items.length > offset) return items[offset].link.split('v=')[1];
+        if (items.length > offset) {
+            return items[offset].link.split('v=')[1];
+        }
         return null;
     } catch (e) {
-        console.warn("Fetch failed", e); return null; 
+        console.warn("Fetch failed or timed out", e);
+        return null; 
     }
 }
 
-// --- CLEANUP ---
+// --- CORE CLEANUP ---
 function cleanupEnvironment() {
   if (ytPlayer && typeof ytPlayer.destroy === 'function') {
     try { ytPlayer.stopVideo(); ytPlayer.destroy(); } catch(e){}
   }
   ytPlayer = null;
-  if (hls) { try { hls.destroy(); } catch(e){} hls = null; }
+
+  if (hls) {
+    try { hls.destroy(); } catch(e){}
+    hls = null;
+  }
   
   STREAM_DIV.innerHTML = ''; 
-  HLS_VIDEO.pause(); HLS_VIDEO.src = ""; HLS_VIDEO.style.display = 'none';
+  HLS_VIDEO.pause(); 
+  HLS_VIDEO.src = ""; 
+  HLS_VIDEO.style.display = 'none';
   TIME_TV.style.display = 'none';
+  
   if (safetyTimer) clearTimeout(safetyTimer);
   if (watchdogTimer) clearTimeout(watchdogTimer);
 }
@@ -139,6 +248,7 @@ function loadChannel(index, toggle = 0) {
   const thisLoadId = activeLoadId;
   localStorage.setItem('currentChannel', index);
   loadingIndicator.style.display = 'block';
+  
   cleanupEnvironment(); 
 
   const channel = CHANNELS[index];
@@ -150,21 +260,26 @@ function loadChannel(index, toggle = 0) {
   }, 8000);
 
   if (channel.type === 'time') {
-    TIME_TV.style.display = 'block'; loadingIndicator.style.display = 'none';
-    showChannelName(channel.name, 0); return;
+    TIME_TV.style.display = 'block'; 
+    loadingIndicator.style.display = 'none';
+    showChannelName(channel.name, 0);
+    return;
   }
   
   if (channel.type === 'hls') {
     if (activeLoadId !== thisLoadId) return;
     HLS_VIDEO.style.display = 'block';
     if (Hls.isSupported()) {
-      hls = new Hls(); hls.loadSource(channel.url); hls.attachMedia(HLS_VIDEO);
+      hls = new Hls(); 
+      hls.loadSource(channel.url); 
+      hls.attachMedia(HLS_VIDEO);
       hls.on(Hls.Events.MANIFEST_PARSED, () => { 
         HLS_VIDEO.play().catch(e => console.log("Autoplay blocked", e));
         loadingIndicator.style.display = 'none'; 
       });
     }
-    showChannelName(channel.name, 0); return;
+    showChannelName(channel.name, 0);
+    return;
   }
 
   // YOUTUBE HANDLER
@@ -177,26 +292,29 @@ function loadChannel(index, toggle = 0) {
       initYoutubeApiPlayer(playerDivId, videoIdOrParams, channel, thisLoadId);
   };
 
-  // DIRECT-RSS LOGIC
+  // --- LOGIC FOR DIRECT-RSS (Ch 2 & 4) ---
   if (channel.type === 'direct-rss') {
       if (toggle === 1) {
+          // Toggle Active: RSS Stream #2 (Offset 1)
           showChannelName(channel.name, 1);
           fetchLatestVideoId(channel.channelId, 1).then(vidId => {
               if (vidId) processYoutubeLoad({ type: 'video_id', id: vidId });
               else processYoutubeLoad({ type: 'channel_live', id: channel.channelId });
           });
       } else {
+          // Toggle Inactive: Direct Stream (RSS Fallback is in Error Handler)
           showChannelName(channel.name, 0);
           processYoutubeLoad({ type: 'channel_live', id: channel.channelId });
       }
       return;
   }
 
-  // STANDARD LOGIC
+  // Standard Logic
   if (channel.type === 'hybrid' || channel.type === 'auto-rss') {
       const isAlt = (toggle === 1 && channel.type === 'hybrid');
       showChannelName(channel.name, isAlt ? 1 : 0);
       fetchLatestVideoId(channel.channelId, isAlt ? 1 : 0).then(vidId => {
+          let target = vidId || channel.channelId; 
           if (!vidId) processYoutubeLoad({ type: 'channel_live', id: channel.channelId });
           else processYoutubeLoad({ type: 'video_id', id: vidId });
       });
@@ -209,44 +327,77 @@ function loadChannel(index, toggle = 0) {
           processYoutubeLoad({ type: 'channel_live', id: channel.channelId });
       }
   }
+
   setupAutoRefresh();
 }
 
-// --- YOUTUBE API PLAYER ---
+// --- ROBUST YOUTUBE API PLAYER ---
 function initYoutubeApiPlayer(divId, videoData, channelObj, loadId) {
     if (loadId !== activeLoadId) return;
+
     if (!window.YT || !window.YT.Player) {
-        setTimeout(() => initYoutubeApiPlayer(divId, videoData, channelObj, loadId), 100); return;
+        setTimeout(() => initYoutubeApiPlayer(divId, videoData, channelObj, loadId), 100);
+        return;
     }
 
+    // Special Iframe for Direct Live (Most Stable)
     if (videoData.type === 'channel_live') {
        const embedUrl = `https://www.youtube.com/embed/live_stream?channel=${videoData.id}&autoplay=1&mute=1&controls=0&enablejsapi=1&origin=${window.location.origin}`;
        const iframe = document.createElement('iframe');
-       iframe.id = divId; iframe.src = embedUrl; iframe.style.width = "100%"; iframe.style.height = "100%"; iframe.style.border = "none"; iframe.allow = "autoplay; fullscreen";
+       iframe.id = divId; 
+       iframe.src = embedUrl; 
+       iframe.style.width = "100%"; 
+       iframe.style.height = "100%"; 
+       iframe.style.border = "none"; 
+       iframe.allow = "autoplay; fullscreen";
+       
        document.getElementById(divId).replaceWith(iframe);
-       ytPlayer = new YT.Player(divId, { events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange, 'onError': onPlayerError } });
+       
+       ytPlayer = new YT.Player(divId, {
+           events: { 
+               'onReady': onPlayerReady, 
+               'onStateChange': onPlayerStateChange, 
+               'onError': onPlayerError 
+           }
+       });
        return;
     }
 
     ytPlayer = new YT.Player(divId, {
-        height: '100%', width: '100%', videoId: videoData.id,
-        playerVars: { 'autoplay': 1, 'mute': 1, 'controls': 0, 'rel': 0, 'modestbranding': 1, 'iv_load_policy': 3, 'fs': 0 },
-        events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange, 'onError': onPlayerError }
+        height: '100%', 
+        width: '100%', 
+        videoId: videoData.id,
+        playerVars: { 
+            'autoplay': 1, 
+            'mute': 1, 
+            'controls': 0, 
+            'rel': 0, 
+            'modestbranding': 1, 
+            'iv_load_policy': 3, 
+            'fs': 0 
+        },
+        events: { 
+            'onReady': onPlayerReady, 
+            'onStateChange': onPlayerStateChange, 
+            'onError': onPlayerError 
+        }
     });
 
     function onPlayerReady(event) {
         if (loadId !== activeLoadId) return;
-        loadingIndicator.style.display = 'none'; event.target.playVideo();
+        loadingIndicator.style.display = 'none';
+        event.target.playVideo();
         setTimeout(() => { try { event.target.unMute(); } catch(e){} }, 500);
         setTimeout(() => { try { event.target.unMute(); } catch(e){} }, 2000);
     }
 
     function onPlayerStateChange(event) {
         if (loadId !== activeLoadId) return;
-        // UPDATED: If stream ENDS, allow fallback even for live streams
+        
+        // --- THIS IS THE FIX YOU ASKED FOR (CH 1 FALLBACK ON END) ---
         if (event.data === YT.PlayerState.ENDED) {
              if (channelObj.fallback) {
-                 console.log("Stream Ended. Switching to fallback...");
+                 console.log("Stream ended, switching to fallback");
                  initYoutubeApiPlayer(divId, {type: 'video_id', id: channelObj.fallback}, channelObj, loadId);
              }
         }
@@ -256,17 +407,20 @@ function initYoutubeApiPlayer(divId, videoData, channelObj, loadId) {
         if (loadId !== activeLoadId) return;
         console.log("YT Error:", event.data);
         
-        // Direct-RSS Fallback
+        // --- FALLBACK LOGIC FOR DIRECT-RSS (Ch 2 & 4) ---
         if (channelObj.type === 'direct-rss' && videoData.type === 'channel_live') {
             console.log("Direct failed, trying RSS...");
             loadingIndicator.style.display = 'block';
             fetchLatestVideoId(channelObj.channelId, 0).then(vidId => {
                  if (loadId === activeLoadId && vidId) {
-                     cleanupEnvironment(); STREAM_DIV.style.display = 'block';
+                     // Found RSS video, restart player
+                     cleanupEnvironment();
+                     STREAM_DIV.style.display = 'block';
                      const newDivId = `yt-fb-${Date.now()}`;
                      STREAM_DIV.innerHTML = `<div id="${newDivId}" class="video-placeholder"></div>`;
                      initYoutubeApiPlayer(newDivId, {type: 'video_id', id: vidId}, channelObj, loadId);
                  } else if (loadId === activeLoadId) {
+                     // No RSS video found? Hide spinner
                      loadingIndicator.style.display = 'none';
                  }
             });
@@ -275,7 +429,8 @@ function initYoutubeApiPlayer(divId, videoData, channelObj, loadId) {
 
         // Standard Fallback
         if (channelObj.fallback && videoData.id !== channelObj.fallback) {
-             cleanupEnvironment(); STREAM_DIV.style.display = 'block';
+             cleanupEnvironment(); 
+             STREAM_DIV.style.display = 'block';
              STREAM_DIV.innerHTML = `<div id="${divId}" class="video-placeholder"></div>`;
              initYoutubeApiPlayer(divId, {type: 'video_id', id: channelObj.fallback}, channelObj, loadId);
         } else {
@@ -284,37 +439,82 @@ function initYoutubeApiPlayer(divId, videoData, channelObj, loadId) {
     }
 }
 
-function setupAutoRefresh() { clearTimeout(refreshTimer); refreshTimer = setTimeout(() => { window.location.reload(); }, 10800000); }
-function showChannelName(name, styleType) {
-  channelNameBox.textContent = name; channelNameBox.className = (styleType === 1) ? 'style-alt show' : 'style-main show';
-  clearTimeout(hideTimeout); hideTimeout = setTimeout(() => channelNameBox.classList.remove("show"), 3000);
-}
-function queueChannelLoad(index) {
-  const isSame = (currentChannel === index); const channel = CHANNELS[index];
-  streamToggle = (isSame && channel.allowToggle) ? (streamToggle === 0 ? 1 : 0) : 0;
-  currentChannel = index; showChannelName(channel.name, streamToggle);
-  if (loadTimeout) clearTimeout(loadTimeout);
-  activeLoadId++; const thisId = activeLoadId;
-  loadTimeout = setTimeout(() => { if (thisId === activeLoadId) loadChannel(index, streamToggle); }, SCROLL_SPEED_MS); 
+function setupAutoRefresh() {
+  clearTimeout(refreshTimer);
+  refreshTimer = setTimeout(() => { window.location.reload(); }, 10800000); // 3 Hours
 }
 
+function showChannelName(name, styleType) {
+  channelNameBox.textContent = name;
+  channelNameBox.className = (styleType === 1) ? 'style-alt show' : 'style-main show';
+  clearTimeout(hideTimeout);
+  hideTimeout = setTimeout(() => channelNameBox.classList.remove("show"), 3000);
+}
+
+function queueChannelLoad(index) {
+  const isSame = (currentChannel === index);
+  const channel = CHANNELS[index];
+  
+  if (isSame && channel.allowToggle) {
+      streamToggle = (streamToggle === 0) ? 1 : 0;
+  } else {
+      streamToggle = 0;
+  }
+  
+  currentChannel = index;
+  showChannelName(channel.name, streamToggle);
+  
+  if (loadTimeout) clearTimeout(loadTimeout);
+  activeLoadId++; 
+  const thisId = activeLoadId;
+
+  loadTimeout = setTimeout(() => { 
+      if (thisId === activeLoadId) {
+          loadChannel(index, streamToggle); 
+      }
+  }, SCROLL_SPEED_MS); 
+}
+
+// --- INPUT HANDLING ---
 let cursorTimeout;
-window.addEventListener('mousemove', () => { document.body.classList.add('user-active'); clearTimeout(cursorTimeout); cursorTimeout = setTimeout(() => { document.body.classList.remove('user-active'); }, 3000); });
+window.addEventListener('mousemove', () => {
+    document.body.classList.add('user-active');
+    clearTimeout(cursorTimeout);
+    cursorTimeout = setTimeout(() => {
+        document.body.classList.remove('user-active');
+    }, 3000);
+});
+
 window.addEventListener('keydown', (e) => {
   const k = e.key; const c = e.keyCode; const now = Date.now();
-  if (now - lastScrollTime < 200) return; lastScrollTime = now;
-  if (k === "ArrowRight" || k === "ArrowUp" || k === "ChannelUp" || c === 427 || k === "PageUp" || c === 33) { e.preventDefault(); queueChannelLoad((currentChannel + 1) % CHANNELS.length); }
-  else if (k === "ArrowLeft" || k === "ArrowDown" || k === "ChannelDown" || c === 428 || k === "PageDown" || c === 34) { e.preventDefault(); queueChannelLoad((currentChannel - 1 + CHANNELS.length) % CHANNELS.length); }
-  else if (/^[1-9]$/.test(k)) { e.preventDefault(); queueChannelLoad(parseInt(k, 10) - 1); }
-  else if (k === "0") { e.preventDefault(); queueChannelLoad(9); }
+  if (now - lastScrollTime < 200) return; 
+  lastScrollTime = now;
+
+  if (k === "ArrowRight" || k === "ArrowUp" || k === "ChannelUp" || c === 427 || k === "PageUp" || c === 33) {
+    e.preventDefault(); queueChannelLoad((currentChannel + 1) % CHANNELS.length);
+  } else if (k === "ArrowLeft" || k === "ArrowDown" || k === "ChannelDown" || c === 428 || k === "PageDown" || c === 34) {
+    e.preventDefault(); queueChannelLoad((currentChannel - 1 + CHANNELS.length) % CHANNELS.length);
+  } else if (/^[1-9]$/.test(k)) {
+    e.preventDefault(); queueChannelLoad(parseInt(k, 10) - 1);
+  } else if (k === "0") {
+    e.preventDefault(); queueChannelLoad(9);
+  }
 });
 OVERLAY.addEventListener('click', () => queueChannelLoad((currentChannel + 1) % CHANNELS.length));
-function updateLocalTime() { const now = new Date(); document.querySelector('#time-tv .clock').textContent = now.toLocaleTimeString('en-US', { hour12: true }); document.querySelector('#time-tv .date').textContent = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }); }
+
+function updateLocalTime() {
+  const now = new Date();
+  document.querySelector('#time-tv .clock').textContent = now.toLocaleTimeString('en-US', { hour12: true });
+  document.querySelector('#time-tv .date').textContent = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+}
 setInterval(updateLocalTime, 1000); updateLocalTime();
-activeLoadId++; loadChannel(currentChannel);
+
+activeLoadId++;
+loadChannel(currentChannel);
 </script>
 </body>
   </html>
+
 
 
   
