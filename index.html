@@ -431,11 +431,10 @@ const PlayerService = {
   }
 };
 
-/**
- * --------------------------------------------------------------------------
+/*--------------------------------------------------------------------------
  * DATA SERVICE (RSS Fetcher)
- * --------------------------------------------------------------------------
- */
+ * --------------------------------------------------------------------------*/
+  
 const DataService = {
   async fetchRSS(channelId, offset = 0) {
     const controller = new AbortController();
@@ -485,36 +484,48 @@ const App = {
     update();
   },
 
-  setupInputs() {
-    // Mouse
+    setupInputs() {
+    // 1. Mouse Wake
     let cursorTimeout;
-    window.addEventListener('mousemove', () => {
-      document.body.classList.add('user-active');
-      clearTimeout(cursorTimeout);
-      cursorTimeout = setTimeout(() => document.body.classList.remove('user-active'), 3000);
-    });
+    const wakeUI = () => {
+        document.body.classList.add('user-active');
+        clearTimeout(cursorTimeout);
+        cursorTimeout = setTimeout(() => document.body.classList.remove('user-active'), 3000);
+    };
+    window.addEventListener('mousemove', wakeUI);
+    window.addEventListener('click', wakeUI);
 
-    // Toggle Button
+    // 2. Toggle Button
     UI.toggleBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      this.triggerChannelLoad(AppState.currentChannel); // Triggers toggle logic
+      this.triggerChannelLoad(AppState.currentChannel); 
     });
 
-    // Overlay
+    // 3. Overlay Click
     UI.overlay.addEventListener('click', () => this.changeChannel(1));
 
-    // Keyboard
-    let lastScrollTime = 0;
+    // 4. Keyboard Controls (UPDATED WITH LG CODES)
     window.addEventListener('keydown', (e) => {
-      const now = Date.now();
-      if (now - lastScrollTime < 200) return;
-      lastScrollTime = now;
+      const k = e.key; const c = e.keyCode; const now = Date.now();
+      
+      // Original Throttle (200ms)
+      if (now - AppState.lastScrollTime < Config.KEY_THROTTLE_MS) return; 
+      AppState.lastScrollTime = now;
+      wakeUI();
 
-      if (e.key === "ArrowRight" || e.key === "ArrowUp" || e.key === "ChannelUp") this.changeChannel(1);
-      else if (e.key === "ArrowLeft" || e.key === "ArrowDown" || e.key === "ChannelDown") this.changeChannel(-1);
-      else if (/^[0-9]$/.test(e.key)) {
-         const idx = (e.key === "0") ? 9 : parseInt(e.key) - 1;
-         this.triggerChannelLoad(idx);
+      // ADDED: LG/Samsung Keys (427, 428, 33, 34)
+      if (k === "ArrowRight" || k === "ArrowUp" || k === "ChannelUp" || c === 427 || k === "PageUp" || c === 33) {
+        e.preventDefault(); 
+        this.changeChannel(1);
+      } else if (k === "ArrowLeft" || k === "ArrowDown" || k === "ChannelDown" || c === 428 || k === "PageDown" || c === 34) {
+        e.preventDefault(); 
+        this.changeChannel(-1);
+      } else if (/^[1-9]$/.test(k)) {
+        e.preventDefault(); 
+        this.triggerChannelLoad(parseInt(k, 10) - 1);
+      } else if (k === "0") {
+        e.preventDefault(); 
+        this.triggerChannelLoad(9);
       }
     });
   },
@@ -663,9 +674,7 @@ const App = {
   }
 };
 
-// Start the Application
-App.init();
+App.init();  // Start the App
 </script>
 </body>
 </html>
-
