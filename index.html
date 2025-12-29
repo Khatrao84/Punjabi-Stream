@@ -46,7 +46,6 @@
       z-index: 0; 
     }
 
-    /* Important: We define a placeholder for YT API to replace */
     .video-placeholder { 
       width: 100%; 
       height: 100%; 
@@ -64,6 +63,20 @@
       display: none; 
     }
 
+    /* --- BACKGROUND IMAGE FOR CH 2 AUDIO MODE --- */
+    #audio-bg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-position: center;
+      background-size: cover;
+      background-repeat: no-repeat;
+      z-index: 1; 
+      display: none;
+    }
+
     #overlay { 
       position: absolute; 
       top: 0; 
@@ -73,6 +86,40 @@
       z-index: 2; 
       cursor: pointer; 
       outline: none; 
+    }
+
+    /* --- TOGGLE BUTTON STYLES --- */
+    #toggleBtn {
+      position: absolute;
+      top: 25px;
+      right: 25px;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      display: none; 
+      justify-content: center;
+      align-items: center;
+      font-size: 24px;
+      font-family: Arial, sans-serif;
+      font-weight: bold;
+      z-index: 10; 
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      transition: transform 0.2s ease;
+    }
+    #toggleBtn:active {
+      transform: scale(0.9);
+    }
+    /* State A: Gold Text, Blue Back */
+    .toggle-A { 
+      background-color: #00296B; 
+      color: #FFD700; 
+    }
+    /* State B: Blue Text, Gold Back */
+    .toggle-B { 
+      background-color: #FFD700; 
+      color: #00296B; 
     }
     
     #channelName {
@@ -152,7 +199,15 @@
   <div id="container">
     <div id="stream"></div>
     <video id="hls-video" playsinline></video>
+    
+    <audio id="bg-audio" preload="auto"></audio>
+    
+    <div id="audio-bg"></div>
+    
     <div id="time-tv"><div class="clock"></div><div class="date"></div></div>
+    
+    <div id="toggleBtn" class="toggle-A">A</div>
+    
     <div id="overlay" tabindex="0"></div>
     <div id="channelName" class="style-main"></div>
     <div class="loading" id="loading"></div>
@@ -161,35 +216,54 @@
 <script>
 // --- CONFIGURATION ---
 const CHANNELS = [
+  // CH 1: Toggle (Direct vs Fallback)
   { name: "1. ਪਟਨਾ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UC3nqw1kd4AK1q9e68YUoLDQ", fallback: "TTK7eNuI3M0", type: "direct", allowToggle: true },
   
-  // CH 2: Direct -> Fail -> RSS (No Toggle)
-  { name: "2. ਅੰਮ੍ਰਿਤਸਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCYn6UEtQ771a_OWSiNBoG8w", type: "direct-rss" },
+  // CH 2: VIDEO vs RADIO
+  { 
+    name: "2. ਅੰਮ੍ਰਿਤਸਰ ਸਾਹਿਬ ਲਾਈਵ", 
+    channelId: "UCYn6UEtQ771a_OWSiNBoG8w", 
+    type: "direct-rss", 
+    allowToggle: true,
+    isRadioHybrid: true,
+    radioUrl: "https://live.sgpc.net:8443/;",
+    radioImage: "https://i.postimg.cc/qvVf6r1m/audioharimandar.png"
+  },
 
-  { name: "3. ਬਾਬਾ ਦੀਪ ਸਿੰਘ ਜੀ ਅੰਮ੍ਰਿਤਸਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCxWx-MPft_7mKrFtN6uOaAA", type: "direct" },
-  
-  // CH 4: Direct -> Fail -> RSS (With Toggle for 2nd stream)
-  { name: "4. ਫਤੇਹਗੜ੍ਹ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCudVHqnOekwcvpzNpY8_ERw", type: "direct-rss", allowToggle: true },
+  // CH 3: FATEHGARH SAHIB - Toggle/Dual Stream
+  { name: "3. ਫਤੇਹਗੜ੍ਹ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCudVHqnOekwcvpzNpY8_ERw", type: "direct-rss", allowToggle: true },
+
+  // CH 4: BABA DEEP SINGH JI - Direct Stream
+  { name: "4. ਬਾਬਾ ਦੀਪ ਸਿੰਘ ਜੀ ਅੰਮ੍ਰਿਤਸਰ ਲਾਈਵ", channelId: "UCxWx-MPft_7mKrFtN6uOaAA", type: "direct" },
 
   { name: "5. ਆਨੰਦਪੁਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCSx5035_us8h8DOp_YhQDaw", type: "direct" },
   { name: "6. ਦਮਦਮਾ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCY8jMpyRRcdzSf6uLiU6izQ", type: "direct" },
   { name: "7. ਸੀਸ ਗੰਜ ਸਾਹਿਬ ਦਿੱਲੀ ਲਾਈਵ", channelId: "UCm0p8BmL4d914gBefceFxxA", type: "direct" },
   { name: "8. ਬੰਗਲਾ ਸਾਹਿਬ ਦਿੱਲੀ ਲਾਈਵ", channelId: "UCA1Jqo-WXVuMgs4WcD5f5Yw", type: "auto-rss" },
   { name: "9. ਹਜ਼ੂਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCuerQ47I9Y2qxr4eIopxbYw", type: "direct" },
-  { name: "0. ਲਾਈਵ ਟਾਈਮ", type: "time" }
+  
+  // CH 0: TIME MODE (Sukhmani Sahib - Local File)
+  { name: "0. ਸੁਖਮਨੀ ਸਾਹਿਬ", type: "time", allowToggle: true }
 ];
 
 // --- GLOBAL VARIABLES ---
 const STREAM_DIV = document.getElementById('stream');
 const HLS_VIDEO = document.getElementById('hls-video');
 const TIME_TV = document.getElementById('time-tv');
+const AUDIO_BG = document.getElementById('audio-bg');
 const channelNameBox = document.getElementById('channelName');
 const loadingIndicator = document.getElementById('loading');
 const OVERLAY = document.getElementById('overlay');
+const toggleBtn = document.getElementById('toggleBtn');
+const BG_AUDIO = document.getElementById('bg-audio');
+
+// --- UPDATED AUDIO SOURCE (LOCAL FILE) ---
+// Make sure you upload 'sukhmani.mp3' to your root folder
+const SUKHMANI_URL = "sukhmani.mp3";
 
 let currentChannel = parseInt(localStorage.getItem('currentChannel')) || 0;
 let streamToggle = 0; 
-let activeLoadId = 0; // The Critical "Generation ID" to prevent race conditions
+let activeLoadId = 0; 
 let ytPlayer = null;
 let hls = null;
 
@@ -197,7 +271,6 @@ let hls = null;
 let refreshTimer, loadTimeout, hideTimeout, safetyTimer, watchdogTimer;
 let lastScrollTime = 0;
 const SCROLL_SPEED_MS = 350; 
-const LOAD_DELAY_MS = 600;
 
 // --- ROBUST FETCH FUNCTION ---
 async function fetchLatestVideoId(channelId, offset = 0) {
@@ -233,6 +306,12 @@ function cleanupEnvironment() {
     hls = null;
   }
   
+  // Reset Audio
+  BG_AUDIO.pause();
+  BG_AUDIO.src = "";
+  BG_AUDIO.currentTime = 0; 
+  
+  AUDIO_BG.style.display = 'none';
   STREAM_DIV.innerHTML = ''; 
   HLS_VIDEO.pause(); 
   HLS_VIDEO.src = ""; 
@@ -241,6 +320,28 @@ function cleanupEnvironment() {
   
   if (safetyTimer) clearTimeout(safetyTimer);
   if (watchdogTimer) clearTimeout(watchdogTimer);
+}
+
+// --- SPECIAL TOGGLE FOR CH 0 (PAUSE/RESUME) ---
+function toggleCh0Audio() {
+    if (BG_AUDIO.paused) {
+        var playPromise = BG_AUDIO.play();
+        if (playPromise !== undefined) {
+            playPromise.then(_ => {
+                toggleBtn.textContent = 'B';
+                toggleBtn.className = 'toggle-B';
+                showChannelName("0. ਸੁਖਮਨੀ ਸਾਹਿਬ (Playing)", 1);
+            }).catch(error => {
+                console.log("Audio Play Failed:", error);
+                showChannelName("Error: Audio Blocked", 0);
+            });
+        }
+    } else {
+        BG_AUDIO.pause();
+        toggleBtn.textContent = 'A';
+        toggleBtn.className = 'toggle-A';
+        showChannelName("0. ਸੁਖਮਨੀ ਸਾਹਿਬ (Paused)", 0);
+    }
 }
 
 // --- CHANNEL LOADER ---
@@ -253,19 +354,53 @@ function loadChannel(index, toggle = 0) {
 
   const channel = CHANNELS[index];
   
+  // --- BUTTON LOGIC ---
+  if (channel.allowToggle) {
+      toggleBtn.style.display = 'flex';
+      // Reset Button State for new channel load
+      toggleBtn.textContent = 'A';
+      toggleBtn.className = 'toggle-A'; 
+  } else {
+      toggleBtn.style.display = 'none';
+  }
+
   watchdogTimer = setTimeout(() => {
     if (activeLoadId === thisLoadId && loadingIndicator.style.display !== 'none') {
         loadingIndicator.style.display = 'none';
     }
   }, 8000);
 
+  // --- 1. TIME / SUKHMANI MODE (CH 0) ---
   if (channel.type === 'time') {
     TIME_TV.style.display = 'block'; 
     loadingIndicator.style.display = 'none';
+    
+    // Load Audio immediately (but paused)
+    BG_AUDIO.src = SUKHMANI_URL;
+    BG_AUDIO.currentTime = 0; 
+    BG_AUDIO.volume = 1.0;
+    BG_AUDIO.load();
+    
     showChannelName(channel.name, 0);
     return;
   }
+
+  // --- 2. RADIO HYBRID MODE (CH 2) ---
+  if (channel.isRadioHybrid && toggle === 1) {
+      AUDIO_BG.style.backgroundImage = `url('${channel.radioImage}')`;
+      AUDIO_BG.style.display = 'block';
+      loadingIndicator.style.display = 'none'; 
+      
+      BG_AUDIO.src = channel.radioUrl;
+      BG_AUDIO.play().catch(e => console.log("Radio play blocked", e));
+      
+      toggleBtn.textContent = 'B';
+      toggleBtn.className = 'toggle-B'; 
+      showChannelName(channel.name + " (Audio)", 1);
+      return; 
+  }
   
+  // --- 3. HLS VIDEO ---
   if (channel.type === 'hls') {
     if (activeLoadId !== thisLoadId) return;
     HLS_VIDEO.style.display = 'block';
@@ -282,7 +417,7 @@ function loadChannel(index, toggle = 0) {
     return;
   }
 
-  // YOUTUBE HANDLER
+  // --- 4. YOUTUBE VIDEO SETUP ---
   STREAM_DIV.style.display = 'block';
   const playerDivId = `yt-player-${Date.now()}`;
   STREAM_DIV.innerHTML = `<div id="${playerDivId}" class="video-placeholder"></div>`;
@@ -292,17 +427,15 @@ function loadChannel(index, toggle = 0) {
       initYoutubeApiPlayer(playerDivId, videoIdOrParams, channel, thisLoadId);
   };
 
-  // --- LOGIC FOR DIRECT-RSS (Ch 2 & 4) ---
   if (channel.type === 'direct-rss') {
       if (toggle === 1) {
-          // Toggle Active: RSS Stream #2 (Offset 1)
           showChannelName(channel.name, 1);
+          toggleBtn.textContent = 'B'; toggleBtn.className = 'toggle-B';
           fetchLatestVideoId(channel.channelId, 1).then(vidId => {
               if (vidId) processYoutubeLoad({ type: 'video_id', id: vidId });
               else processYoutubeLoad({ type: 'channel_live', id: channel.channelId });
           });
       } else {
-          // Toggle Inactive: Direct Stream (RSS Fallback is in Error Handler)
           showChannelName(channel.name, 0);
           processYoutubeLoad({ type: 'channel_live', id: channel.channelId });
       }
@@ -321,6 +454,7 @@ function loadChannel(index, toggle = 0) {
   } else if (channel.type === 'direct') {
       if (toggle === 1 && channel.fallback) {
           showChannelName(channel.name, 1);
+          toggleBtn.textContent = 'B'; toggleBtn.className = 'toggle-B';
           processYoutubeLoad({ type: 'video_id', id: channel.fallback });
       } else {
           showChannelName(channel.name, 0);
@@ -340,7 +474,6 @@ function initYoutubeApiPlayer(divId, videoData, channelObj, loadId) {
         return;
     }
 
-    // Special Iframe for Direct Live (Most Stable)
     if (videoData.type === 'channel_live') {
        const embedUrl = `https://www.youtube.com/embed/live_stream?channel=${videoData.id}&autoplay=1&mute=1&controls=0&enablejsapi=1&origin=${window.location.origin}`;
        const iframe = document.createElement('iframe');
@@ -394,10 +527,8 @@ function initYoutubeApiPlayer(divId, videoData, channelObj, loadId) {
     function onPlayerStateChange(event) {
         if (loadId !== activeLoadId) return;
         
-        // --- THIS IS THE FIX YOU ASKED FOR (CH 1 FALLBACK ON END) ---
         if (event.data === YT.PlayerState.ENDED) {
              if (channelObj.fallback) {
-                 console.log("Stream ended, switching to fallback");
                  initYoutubeApiPlayer(divId, {type: 'video_id', id: channelObj.fallback}, channelObj, loadId);
              }
         }
@@ -407,27 +538,22 @@ function initYoutubeApiPlayer(divId, videoData, channelObj, loadId) {
         if (loadId !== activeLoadId) return;
         console.log("YT Error:", event.data);
         
-        // --- FALLBACK LOGIC FOR DIRECT-RSS (Ch 2 & 4) ---
         if (channelObj.type === 'direct-rss' && videoData.type === 'channel_live') {
-            console.log("Direct failed, trying RSS...");
             loadingIndicator.style.display = 'block';
             fetchLatestVideoId(channelObj.channelId, 0).then(vidId => {
                  if (loadId === activeLoadId && vidId) {
-                     // Found RSS video, restart player
                      cleanupEnvironment();
                      STREAM_DIV.style.display = 'block';
                      const newDivId = `yt-fb-${Date.now()}`;
                      STREAM_DIV.innerHTML = `<div id="${newDivId}" class="video-placeholder"></div>`;
                      initYoutubeApiPlayer(newDivId, {type: 'video_id', id: vidId}, channelObj, loadId);
                  } else if (loadId === activeLoadId) {
-                     // No RSS video found? Hide spinner
                      loadingIndicator.style.display = 'none';
                  }
             });
             return;
         }
 
-        // Standard Fallback
         if (channelObj.fallback && videoData.id !== channelObj.fallback) {
              cleanupEnvironment(); 
              STREAM_DIV.style.display = 'block';
@@ -454,6 +580,12 @@ function showChannelName(name, styleType) {
 function queueChannelLoad(index) {
   const isSame = (currentChannel === index);
   const channel = CHANNELS[index];
+
+  // SPECIAL: If Ch 0 is active, just toggle pause/resume (Don't Reload)
+  if (isSame && channel.type === 'time') {
+      toggleCh0Audio();
+      return;
+  }
   
   if (isSame && channel.allowToggle) {
       streamToggle = (streamToggle === 0) ? 1 : 0;
@@ -485,6 +617,12 @@ window.addEventListener('mousemove', () => {
     }, 3000);
 });
 
+// Toggle Button Click
+toggleBtn.addEventListener('click', (e) => {
+    e.stopPropagation(); 
+    queueChannelLoad(currentChannel);
+});
+
 window.addEventListener('keydown', (e) => {
   const k = e.key; const c = e.keyCode; const now = Date.now();
   if (now - lastScrollTime < 200) return; 
@@ -513,8 +651,4 @@ activeLoadId++;
 loadChannel(currentChannel);
 </script>
 </body>
-  </html>
-
-
-
-  
+</html>
