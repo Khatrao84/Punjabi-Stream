@@ -17,74 +17,200 @@
   <script src="https://www.youtube.com/iframe_api"></script>
 
   <style>
-    /* --- CORE APP STYLES --- */
+    /* --- YOUR ORIGINAL DESIGN PRESERVED --- */
     html, body {
-      margin: 0; padding: 0; height: 100%;
-      background-color: black; font-family: "Noto Sans Gurmukhi", sans-serif;
-      overflow: hidden; -webkit-tap-highlight-color: transparent; 
-      user-select: none; cursor: none;
+      margin: 0; 
+      padding: 0; 
+      height: 100%;
+      background-color: black; 
+      font-family: "Noto Sans Gurmukhi", sans-serif;
+      overflow: hidden; 
+      -webkit-tap-highlight-color: transparent; 
+      user-select: none;
+      cursor: none;
     }
-    body.user-active { cursor: default; }
+    body.user-active { 
+      cursor: default; 
+    }
     
-    #container { position: relative; width: 100vw; height: 100vh; background: black; }
-
-    /* LAYERS */
-    #stream { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
-    #hls-video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; display: none; }
-    #audio-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-position: center; background-size: cover; z-index: 1; display: none; }
-    #time-tv { 
-      position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; z-index: 1; 
-      background: url("haarimandr.png") no-repeat center center; background-size: cover; font-family: "Arial Black", sans-serif; 
+    #container { 
+      position: relative; 
+      width: 100vw; 
+      height: 100vh; 
     }
-    #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; cursor: pointer; outline: none; }
 
-    /* UI COMPONENTS */
-    .video-placeholder { width: 100%; height: 100%; background: black; }
+    #stream { 
+      position: absolute; 
+      top: 0; 
+      left: 0; 
+      width: 100%; 
+      height: 100%; 
+      z-index: 0; 
+    }
+
+    .video-placeholder { 
+      width: 100%; 
+      height: 100%; 
+      background: black; 
+    }
+    
+    #hls-video { 
+      position: absolute; 
+      top: 0; 
+      left: 0; 
+      width: 100%; 
+      height: 100%; 
+      object-fit: cover; 
+      z-index: 1; 
+      display: none; 
+    }
+
+    /* BACKGROUND IMAGE FOR CH 2 AUDIO MODE */
+    #audio-bg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-position: center;
+      background-size: cover;
+      background-repeat: no-repeat;
+      z-index: 1; 
+      display: none;
+    }
+
+    #overlay { 
+      position: absolute; 
+      top: 0; 
+      left: 0; 
+      width: 100%; 
+      height: 100%; 
+      z-index: 2; 
+      cursor: pointer; 
+      outline: none; 
+    }
+
+    /* TOGGLE BUTTON - TOP LEFT */
+    #toggleBtn {
+      position: absolute;
+      top: 5px;
+      left: 6px; /* Top Left Position */
+      width: 25px;
+      height: 55px;
+      border-radius: 50%;
+      display: none; 
+      justify-content: center;
+      align-items: center;
+      font-size: 20px;
+      font-family: Arial, sans-serif;
+      font-weight: bold;
+      z-index: 10; 
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      transition: transform 0.2s ease;
+    }
+    #toggleBtn:active {
+      transform: scale(0.9);
+    }
+    /* State A: Gold Text, Blue Back */
+    .toggle-A { 
+      background-color: #00296B; 
+      color: #FFD700; 
+    }
+    /* State B: Blue Text, Gold Back */
+    .toggle-B { 
+      background-color: #FFD700; 
+      color: #00296B; 
+    }
     
     #channelName {
-      position: absolute; bottom: -80px; left: 0; width: 100%; padding: 15px 20px; 
-      font-size: 24px; font-weight: bold; text-align: center; opacity: 0; 
-      transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1); z-index: 3;
+      position: absolute; 
+      bottom: -80px; 
+      left: 0; 
+      width: 100%;
+      padding: 15px 20px; 
+      font-size: 24px; 
+      font-weight: bold;
+      text-align: center; 
+      opacity: 0; 
+      transition: all 0.6s ease; 
+      z-index: 3;
     }
-    .style-main { background-color: rgba(0, 41, 107, 0.95) !important; color: #FFD700 !important; border-top: 2px solid #FFD700; }
-    .style-alt { background-color: rgba(255, 215, 0, 0.95) !important; color: #00296B !important; border-top: 2px solid #00296B; }
-    #channelName.show { bottom: 0; opacity: 1; }
+    .style-main { 
+      background-color: rgba(0, 41, 107, 0.9) !important; 
+      color: #FFD700 !important; 
+    }
+    .style-alt { 
+      background-color: #FFD700 !important; 
+      color: #00296B !important; 
+    }
+    #channelName.show { 
+      bottom: 0; 
+      opacity: 1; 
+    }
     
     .loading {
-      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      width: 70px; height: 70px; border: 6px solid rgba(255, 213, 0, 0.2);
-      border-radius: 50%; border-top-color: #ffd500;
-      animation: spin 1s linear infinite; z-index: 4; display: none;
+      position: absolute; 
+      top: 50%; 
+      left: 50%; 
+      transform: translate(-50%, -50%);
+      width: 60px; 
+      height: 60px; 
+      border: 6px solid rgba(255, 213, 0, 0.2);
+      border-radius: 50%; 
+      border-top-color: #ffd500;
+      animation: spin 1s linear infinite; 
+      z-index: 4; 
+      display: none;
     }
-    @keyframes spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+    @keyframes spin { 
+      to { transform: translate(-50%, -50%) rotate(360deg); } 
+    }
     
-    #time-tv .clock { position: absolute; top: 6%; right: 3%; font-size: 8.7vw; color: #FFD700; text-shadow: 0 4px 15px rgba(0,0,0,0.8); }
-    #time-tv .date { position: absolute; top: 2%; right: 3.5%; font-size: 3vw; color: #FFE066; text-shadow: 0 2px 10px rgba(0,0,0,0.8); }
-
-    /* TOGGLE BUTTON (TOP LEFT) */
-    #toggleBtn {
-      position: absolute; top: 25px; left: 25px; width: 50px; height: 50px; border-radius: 50%;
-      display: none; justify-content: center; align-items: center;
-      font-size: 24px; font-family: Arial, sans-serif; font-weight: bold; z-index: 10; cursor: pointer;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.5); border: 2px solid rgba(255, 255, 255, 0.3);
-      transition: transform 0.2s ease, background-color 0.3s ease;
+    #time-tv {
+      position: absolute; 
+      top: 0; 
+      left: 0; 
+      width: 100%; 
+      height: 100%;
+      display: none; 
+      z-index: 1; 
+      background: url("haarimandr.png") no-repeat center center;
+      background-size: cover; 
+      font-family: "Arial Black", sans-serif;
     }
-    #toggleBtn:active { transform: scale(0.92); }
-    .toggle-A { background-color: #00296B; color: #FFD700; }
-    .toggle-B { background-color: #FFD700; color: #00296B; }
+    #time-tv .clock { 
+      position: absolute; 
+      top: 6%; 
+      right: 3%; 
+      font-size: 8.7vw; 
+      color: #FFD700; 
+      text-shadow: 0 0 10px #FFD700; 
+    }
+    #time-tv .date { 
+      position: absolute; 
+      top: 2%; 
+      right: 3.5%; 
+      font-size: 3vw; 
+      color: #FFE066; 
+    }
   </style>
 </head>
 <body>
   <div id="container">
     <div id="stream"></div>
     <video id="hls-video" playsinline></video>
+    
     <audio id="bg-audio" preload="auto"></audio>
+    
     <div id="audio-bg"></div>
+    
     <div id="time-tv"><div class="clock"></div><div class="date"></div></div>
     
     <div id="toggleBtn" class="toggle-A">A</div>
-    <div id="overlay" tabindex="0"></div>
     
+    <div id="overlay" tabindex="0"></div>
     <div id="channelName" class="style-main"></div>
     <div class="loading" id="loading"></div>
   </div>
@@ -96,10 +222,11 @@
  * --------------------------------------------------------------------------
  */
 const Config = {
-  SCROLL_DEBOUNCE: 350,
+  SCROLL_SPEED_MS: 350,
   AUTO_REFRESH_MS: 10800000, // 3 Hours
   LOAD_TIMEOUT_MS: 8000,
   RSS_FETCH_TIMEOUT: 5000,
+  // Local files must be in the same folder
   LOCAL_AUDIO_FILE: "sukhmani.mp3",
   LOCAL_RADIO_IMG: "audioharimandar.png"
 };
@@ -122,7 +249,7 @@ const CHANNELS = [
   // CH 3: Fatehgarh Sahib (Direct / RSS Toggle)
   { name: "3. ਫਤੇਹਗੜ੍ਹ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCudVHqnOekwcvpzNpY8_ERw", type: "direct-rss", allowToggle: true },
 
-  // Standard Channels
+   // Standard Channels
   { name: "4. ਬਾਬਾ ਦੀਪ ਸਿੰਘ ਜੀ ਅੰਮ੍ਰਿਤਸਰ ਲਾਈਵ", channelId: "UCxWx-MPft_7mKrFtN6uOaAA", type: "direct" },
   { name: "5. ਆਨੰਦਪੁਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCSx5035_us8h8DOp_YhQDaw", type: "direct" },
   { name: "6. ਦਮਦਮਾ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCY8jMpyRRcdzSf6uLiU6izQ", type: "direct" },
@@ -130,21 +257,25 @@ const CHANNELS = [
   { name: "8. ਬੰਗਲਾ ਸਾਹਿਬ ਦਿੱਲੀ ਲਾਈਵ", channelId: "UCA1Jqo-WXVuMgs4WcD5f5Yw", type: "auto-rss" },
   { name: "9. ਹਜ਼ੂਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCuerQ47I9Y2qxr4eIopxbYw", type: "direct" },
   
-  // CH 0: Time / Audio
+  // CH 0: Time / Audio (Pause-Resume)
   { name: "0. ਸੁਖਮਨੀ ਸਾਹਿਬ", type: "time", allowToggle: true }
 ];
 
 /**
  * --------------------------------------------------------------------------
- * APP STATE MANAGEMENT
+ * APP STATE MANAGEMENT (Robust Logic)
  * --------------------------------------------------------------------------
  */
 const AppState = {
   currentChannel: parseInt(localStorage.getItem('currentChannel')) || 0,
-  toggleMode: 0,         // 0 = A, 1 = B
-  generationId: 0,       // Race condition preventer
-  lastInteraction: 0,
-  timers: {}
+  streamToggle: 0,
+  activeLoadId: 0, // Critical for preventing race conditions
+  timers: {
+    load: null,
+    banner: null,
+    watchdog: null,
+    refresh: null
+  }
 };
 
 // DOM Cache
@@ -165,13 +296,14 @@ const UI = {
 
 /**
  * --------------------------------------------------------------------------
- * PLAYER SERVICE
+ * PLAYER LOGIC
  * --------------------------------------------------------------------------
  */
 const PlayerService = {
   ytPlayer: null,
   hls: null,
 
+  // Robust Cleanup: Prevents memory leaks and stuck players
   cleanup() {
     // 1. Destroy YouTube
     if (this.ytPlayer) {
@@ -186,105 +318,122 @@ const PlayerService = {
       this.hls = null;
     }
 
-    // 3. Reset DOM
-    UI.stream.innerHTML = ''; // Aggressively wipe container
+    // 3. Reset Audio & Backgrounds
+    UI.bgAudio.pause();
+    UI.bgAudio.src = "";
+    UI.bgAudio.currentTime = 0; // Force reset
+    UI.audioBg.style.display = 'none';
+    UI.timeTv.style.display = 'none';
+
+    // 4. Wipe Video Container
+    UI.stream.innerHTML = ''; 
     UI.hlsVideo.pause();
     UI.hlsVideo.src = "";
     UI.hlsVideo.style.display = 'none';
     
-    // 4. Reset Audio
-    UI.bgAudio.pause();
-    UI.bgAudio.src = "";
-    UI.bgAudio.currentTime = 0;
-    
-    // 5. Hide Backgrounds
-    UI.timeTv.style.display = 'none';
-    UI.audioBg.style.display = 'none';
-    
-    // 6. Clear Watchdogs
+    // 5. Clear Watchdogs
     clearTimeout(AppState.timers.watchdog);
   },
 
-  initYouTube(videoData, channelObj, loadId) {
-    // Ensure container exists
-    const playerId = `yt-player-${Date.now()}`;
-    UI.stream.innerHTML = `<div id="${playerId}" class="video-placeholder"></div>`;
-    UI.stream.style.display = 'block';
+  // Initialize YouTube with aggressive Fallback handling
+  initYouTube(divId, videoData, channelObj, loadId) {
+    // Safety check: Don't load if user already switched channel
+    if (loadId !== AppState.activeLoadId) return;
 
-    const onReady = (event) => {
-      if (loadId !== AppState.generationId) return;
-      UI.loading.style.display = 'none';
-      event.target.playVideo();
-      // Double unmute hack
-      setTimeout(() => { try { event.target.unMute(); } catch(e){} }, 500);
-      setTimeout(() => { try { event.target.unMute(); } catch(e){} }, 2000);
-    };
+    if (!window.YT || !window.YT.Player) {
+        setTimeout(() => this.initYouTube(divId, videoData, channelObj, loadId), 100);
+        return;
+    }
 
-    const onStateChange = (event) => {
-      if (loadId !== AppState.generationId) return;
-      // CRITICAL FIX: If stream ends, destroy player immediately to prevent recommendations
-      if (event.data === YT.PlayerState.ENDED) {
-         if (channelObj.fallback) {
-             console.log("Stream Ended. Force switching to fallback.");
-             this.cleanup(); // Wipe screen
-             this.initYouTube({type: 'video_id', id: channelObj.fallback}, channelObj, loadId);
-         }
-      }
-    };
-
-    const onError = (event) => {
-      if (loadId !== AppState.generationId) return;
-      console.warn("YT Error:", event.data);
-      
-      // Auto-Recover Logic
-      if (channelObj.type === 'direct-rss' && videoData.type === 'channel_live') {
-          console.log("Direct failed, attempting RSS recovery...");
-          UI.loading.style.display = 'block';
-          DataService.fetchRSS(channelObj.channelId).then(vidId => {
-               if (loadId === AppState.generationId && vidId) {
-                   this.cleanup();
-                   this.initYouTube({type: 'video_id', id: vidId}, channelObj, loadId);
-               } else {
-                   UI.loading.style.display = 'none';
-               }
-          });
-          return;
-      }
-
-      if (channelObj.fallback && videoData.id !== channelObj.fallback) {
-           this.cleanup();
-           this.initYouTube({type: 'video_id', id: channelObj.fallback}, channelObj, loadId);
-      } else {
-          UI.loading.style.display = 'none';
-      }
-    };
-
-    // YouTube Iframe API Init
-    const playerConfig = {
-      height: '100%', width: '100%',
-      videoId: videoData.id,
-      playerVars: { 'autoplay': 1, 'mute': 1, 'controls': 0, 'rel': 0, 'modestbranding': 1, 'iv_load_policy': 3, 'fs': 0 },
-      events: { 'onReady': onReady, 'onStateChange': onStateChange, 'onError': onError }
-    };
-
-    // Handle Live Stream Embed Exception
+    // Embed logic for Channel Live vs Video ID
     if (videoData.type === 'channel_live') {
-        const embedUrl = `https://www.youtube.com/embed/live_stream?channel=${videoData.id}&autoplay=1&mute=1&controls=0&enablejsapi=1&origin=${window.location.origin}`;
-        const iframe = document.createElement('iframe');
-        iframe.id = playerId; iframe.src = embedUrl; 
-        iframe.style.width = "100%"; iframe.style.height = "100%"; iframe.style.border = "none";
-        iframe.allow = "autoplay; fullscreen";
-        document.getElementById(playerId).replaceWith(iframe);
-        this.ytPlayer = new YT.Player(playerId, { events: playerConfig.events });
+       const embedUrl = `https://www.youtube.com/embed/live_stream?channel=${videoData.id}&autoplay=1&mute=1&controls=0&enablejsapi=1&origin=${window.location.origin}`;
+       const iframe = document.createElement('iframe');
+       iframe.id = divId; iframe.src = embedUrl; 
+       iframe.style.width = "100%"; iframe.style.height = "100%"; iframe.style.border = "none"; 
+       iframe.allow = "autoplay; fullscreen";
+       document.getElementById(divId).replaceWith(iframe);
+       
+       this.ytPlayer = new YT.Player(divId, {
+           events: { 
+               'onReady': (e) => this.onPlayerReady(e, loadId),
+               'onStateChange': (e) => this.onStateChange(e, channelObj, loadId),
+               'onError': (e) => this.onError(e, videoData, channelObj, loadId, divId)
+           }
+       });
     } else {
-        this.ytPlayer = new YT.Player(playerId, playerConfig);
+       this.ytPlayer = new YT.Player(divId, {
+           height: '100%', width: '100%', videoId: videoData.id,
+           playerVars: { 'autoplay': 1, 'mute': 1, 'controls': 0, 'rel': 0, 'modestbranding': 1, 'iv_load_policy': 3, 'fs': 0 },
+           events: { 
+               'onReady': (e) => this.onPlayerReady(e, loadId),
+               'onStateChange': (e) => this.onStateChange(e, channelObj, loadId),
+               'onError': (e) => this.onError(e, videoData, channelObj, loadId, divId)
+           }
+       });
+    }
+  },
+
+  onPlayerReady(event, loadId) {
+    if (loadId !== AppState.activeLoadId) return;
+    UI.loading.style.display = 'none';
+    event.target.playVideo();
+    setTimeout(() => { try { event.target.unMute(); } catch(e){} }, 500);
+    setTimeout(() => { try { event.target.unMute(); } catch(e){} }, 2000);
+  },
+
+  onStateChange(event, channelObj, loadId) {
+    if (loadId !== AppState.activeLoadId) return;
+    
+    // CRITICAL: Aggressively wipe old player if stream ends to avoid "Related Videos"
+    if (event.data === YT.PlayerState.ENDED) {
+         if (channelObj.fallback) {
+             console.log("Stream Ended. Wiping and switching to fallback.");
+             UI.stream.innerHTML = ''; // Immediate Wipe
+             const newDivId = `yt-fallback-${Date.now()}`;
+             UI.stream.innerHTML = `<div id="${newDivId}" class="video-placeholder"></div>`;
+             this.initYouTube(newDivId, {type: 'video_id', id: channelObj.fallback}, channelObj, loadId);
+         }
+    }
+  },
+
+  onError(event, videoData, channelObj, loadId, divId) {
+    if (loadId !== AppState.activeLoadId) return;
+    console.log("YT Error:", event.data);
+    
+    // Recovery Logic: Direct -> RSS
+    if (channelObj.type === 'direct-rss' && videoData.type === 'channel_live') {
+        UI.loading.style.display = 'block';
+        DataService.fetchRSS(channelObj.channelId).then(vidId => {
+             if (loadId === AppState.activeLoadId && vidId) {
+                 this.cleanup(); // Clean before retry
+                 UI.stream.style.display = 'block';
+                 const newDivId = `yt-rss-${Date.now()}`;
+                 UI.stream.innerHTML = `<div id="${newDivId}" class="video-placeholder"></div>`;
+                 this.initYouTube(newDivId, {type: 'video_id', id: vidId}, channelObj, loadId);
+             } else {
+                 UI.loading.style.display = 'none';
+             }
+        });
+        return;
+    }
+
+    // Recovery Logic: Fallback
+    if (channelObj.fallback && videoData.id !== channelObj.fallback) {
+         this.cleanup();
+         UI.stream.style.display = 'block';
+         const newDivId = `yt-fb-${Date.now()}`;
+         UI.stream.innerHTML = `<div id="${newDivId}" class="video-placeholder"></div>`;
+         this.initYouTube(newDivId, {type: 'video_id', id: channelObj.fallback}, channelObj, loadId);
+    } else {
+        UI.loading.style.display = 'none'; 
     }
   }
 };
 
 /**
  * --------------------------------------------------------------------------
- * DATA SERVICE
+ * DATA SERVICE (RSS Fetcher)
  * --------------------------------------------------------------------------
  */
 const DataService = {
@@ -297,7 +446,10 @@ const DataService = {
       clearTimeout(timeout);
       if (!res.ok) throw new Error("RSS Error");
       const data = await res.json();
-      return (data.items && data.items.length > offset) ? data.items[offset].link.split('v=')[1] : null;
+      if (data.items && data.items.length > offset) {
+          return data.items[offset].link.split('v=')[1];
+      }
+      return null;
     } catch (e) {
       console.warn("RSS Fetch Failed", e);
       return null;
@@ -305,33 +457,36 @@ const DataService = {
   }
 };
 
-/**
- * --------------------------------------------------------------------------
+/* --------------------------------------------------------------------------
  * APP CONTROLLER
- * --------------------------------------------------------------------------
- */
+ * -------------------------------------------------------------------------- */
+  
 const App = {
   init() {
-    this.setupListeners();
-    this.updateClock();
-    this.loadChannel(AppState.currentChannel);
+    // Initial Load
+    AppState.activeLoadId++;
+    this.loadChannel(AppState.currentChannel, 0);
     
-    // Auto Refresh
-    setInterval(() => window.location.reload(), Config.AUTO_REFRESH_MS);
-    // Clock Tick
-    setInterval(() => this.updateClock(), 1000);
-    // Network Recovery
-    window.addEventListener('online', () => this.loadChannel(AppState.currentChannel));
+    // Events
+    this.setupInputs();
+    this.setupClock();
+    
+    // Robustness: Auto Refresh
+    AppState.timers.refresh = setTimeout(() => window.location.reload(), Config.AUTO_REFRESH_MS);
   },
 
-  updateClock() {
-    const now = new Date();
-    UI.clock.textContent = now.toLocaleTimeString('en-US', { hour12: true });
-    UI.date.textContent = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  setupClock() {
+    const update = () => {
+      const now = new Date();
+      UI.clock.textContent = now.toLocaleTimeString('en-US', { hour12: true });
+      UI.date.textContent = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    };
+    setInterval(update, 1000);
+    update();
   },
 
-  setupListeners() {
-    // Mouse Movement
+  setupInputs() {
+    // Mouse
     let cursorTimeout;
     window.addEventListener('mousemove', () => {
       document.body.classList.add('user-active');
@@ -342,116 +497,109 @@ const App = {
     // Toggle Button
     UI.toggleBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      this.triggerToggle();
+      this.triggerChannelLoad(AppState.currentChannel); // Triggers toggle logic
     });
+
+    // Overlay
+    UI.overlay.addEventListener('click', () => this.changeChannel(1));
 
     // Keyboard
+    let lastScrollTime = 0;
     window.addEventListener('keydown', (e) => {
       const now = Date.now();
-      if (now - AppState.lastInteraction < 200) return; // Throttle
-      AppState.lastInteraction = now;
+      if (now - lastScrollTime < 200) return;
+      lastScrollTime = now;
 
-      const k = e.key;
-      if (k === "ArrowRight" || k === "ArrowUp" || k === "ChannelUp") this.nextChannel();
-      else if (k === "ArrowLeft" || k === "ArrowDown" || k === "ChannelDown") this.prevChannel();
-      else if (/^[0-9]$/.test(k)) {
-         const idx = (k === "0") ? 9 : parseInt(k) - 1;
-         this.queueLoad(idx);
+      if (e.key === "ArrowRight" || e.key === "ArrowUp" || e.key === "ChannelUp") this.changeChannel(1);
+      else if (e.key === "ArrowLeft" || e.key === "ArrowDown" || e.key === "ChannelDown") this.changeChannel(-1);
+      else if (/^[0-9]$/.test(e.key)) {
+         const idx = (e.key === "0") ? 9 : parseInt(e.key) - 1;
+         this.triggerChannelLoad(idx);
       }
     });
-
-    // Overlay Click
-    UI.overlay.addEventListener('click', () => this.nextChannel());
   },
 
-  nextChannel() { this.queueLoad((AppState.currentChannel + 1) % CHANNELS.length); },
-  prevChannel() { this.queueLoad((AppState.currentChannel - 1 + CHANNELS.length) % CHANNELS.length); },
+  changeChannel(dir) {
+    const newIdx = (AppState.currentChannel + dir + CHANNELS.length) % CHANNELS.length;
+    this.triggerChannelLoad(newIdx);
+  },
 
-  queueLoad(index) {
+  triggerChannelLoad(index) {
     const isSame = (AppState.currentChannel === index);
     const channel = CHANNELS[index];
 
-    // Special Case: Ch 0 Pause/Resume Logic
+    // Special Case: Ch 0 Pause/Resume Logic (Don't Reload)
     if (isSame && channel.type === 'time') {
-      this.toggleCh0Audio();
-      return;
+        this.toggleCh0Audio();
+        return;
     }
 
-    // Toggle Logic
     if (isSame && channel.allowToggle) {
-      AppState.toggleMode = (AppState.toggleMode === 0) ? 1 : 0;
+        AppState.streamToggle = (AppState.streamToggle === 0) ? 1 : 0;
     } else {
-      AppState.toggleMode = 0;
+        AppState.streamToggle = 0;
     }
 
     AppState.currentChannel = index;
-    this.showBanner(channel.name, AppState.toggleMode);
+    this.showBanner(channel.name, AppState.streamToggle);
     
     // Debounce
     clearTimeout(AppState.timers.load);
-    AppState.generationId++;
-    const thisId = AppState.generationId;
+    AppState.activeLoadId++; 
+    const thisId = AppState.activeLoadId;
 
     AppState.timers.load = setTimeout(() => {
-      if (thisId === AppState.generationId) this.loadChannel(index, AppState.toggleMode);
-    }, Config.SCROLL_DEBOUNCE);
+      if (thisId === AppState.activeLoadId) {
+          this.loadChannel(index, AppState.streamToggle);
+      }
+    }, Config.SCROLL_SPEED_MS);
   },
 
-  triggerToggle() {
-    this.queueLoad(AppState.currentChannel);
+  toggleCh0Audio() {
+    if (UI.bgAudio.paused) {
+        UI.bgAudio.play()
+          .then(() => {
+             UI.toggleBtn.textContent = 'B'; UI.toggleBtn.className = 'toggle-B';
+             this.showBanner("0. ਸੁਖਮਨੀ ਸਾਹਿਬ (Playing)", 1);
+          })
+          .catch(() => this.showBanner("Error: Audio Blocked", 0));
+    } else {
+        UI.bgAudio.pause();
+        UI.toggleBtn.textContent = 'A'; UI.toggleBtn.className = 'toggle-A';
+        this.showBanner("0. ਸੁਖਮਨੀ ਸਾਹਿਬ (Paused)", 0);
+    }
   },
 
-  showBanner(text, mode) {
-    UI.channelName.textContent = text;
+  showBanner(name, mode) {
+    UI.channelName.textContent = name;
     UI.channelName.className = (mode === 1) ? 'style-alt show' : 'style-main show';
     clearTimeout(AppState.timers.banner);
     AppState.timers.banner = setTimeout(() => UI.channelName.classList.remove("show"), 3000);
   },
 
-  toggleCh0Audio() {
-    if (UI.bgAudio.paused) {
-      UI.bgAudio.play()
-        .then(() => {
-           this.updateButton(1);
-           this.showBanner("0. ਸੁਖਮਨੀ ਸਾਹਿਬ (Playing)", 1);
-        })
-        .catch(() => this.showBanner("Error: Audio Blocked", 0));
-    } else {
-      UI.bgAudio.pause();
-      this.updateButton(0);
-      this.showBanner("0. ਸੁਖਮਨੀ ਸਾਹਿਬ (Paused)", 0);
-    }
-  },
-
-  updateButton(mode) {
-    UI.toggleBtn.textContent = (mode === 0) ? 'A' : 'B';
-    UI.toggleBtn.className = (mode === 0) ? 'toggle-A' : 'toggle-B';
-  },
-
-  loadChannel(index, toggle = 0) {
+  loadChannel(index, toggle) {
     const channel = CHANNELS[index];
-    const genId = AppState.generationId;
+    const genId = AppState.activeLoadId;
     localStorage.setItem('currentChannel', index);
     
     UI.loading.style.display = 'block';
-    PlayerService.cleanup();
+    PlayerService.cleanup(); // Clean slate
 
-    // Setup Watchdog
+    // Watchdog Timer
     AppState.timers.watchdog = setTimeout(() => {
-      if (genId === AppState.generationId) UI.loading.style.display = 'none';
+      if (genId === AppState.activeLoadId) UI.loading.style.display = 'none';
     }, Config.LOAD_TIMEOUT_MS);
 
-    // Update Button Visibility
+    // Toggle Button UI
     if (channel.allowToggle) {
         UI.toggleBtn.style.display = 'flex';
-        this.updateButton(toggle);
+        UI.toggleBtn.textContent = (toggle === 0) ? 'A' : 'B';
+        UI.toggleBtn.className = (toggle === 0) ? 'toggle-A' : 'toggle-B';
     } else {
         UI.toggleBtn.style.display = 'none';
     }
 
-    // --- LOGIC ROUTER ---
-    
-    // 1. Time / Audio Mode (Ch 0)
+    // --- LOGIC: CH 0 (Time/Audio) ---
     if (channel.type === 'time') {
       UI.timeTv.style.display = 'block';
       UI.loading.style.display = 'none';
@@ -463,7 +611,7 @@ const App = {
       return;
     }
 
-    // 2. Radio Hybrid (Ch 2)
+    // --- LOGIC: CH 2 (Radio Hybrid) ---
     if (channel.isRadioHybrid && toggle === 1) {
       UI.audioBg.style.backgroundImage = `url('${channel.radioImage}')`;
       UI.audioBg.style.display = 'block';
@@ -473,47 +621,49 @@ const App = {
       this.showBanner(channel.name + " (Audio)", 1);
       return;
     }
-    // 3. Video Modes (Direct / RSS)
+
+    // --- LOGIC: Video Modes ---
+    const divId = `yt-player-${Date.now()}`;
+    UI.stream.innerHTML = `<div id="${divId}" class="video-placeholder"></div>`;
+    UI.stream.style.display = 'block';
+
     if (channel.type === 'direct-rss') {
-        const isSecondary = (toggle === 1 && !channel.isRadioHybrid);
-        this.showBanner(channel.name, isSecondary ? 1 : 0);
-        
-        if (isSecondary) {
-            // Fetch Secondary Stream (RSS Offset 1)
-             DataService.fetchRSS(channel.channelId, 1).then(vidId => {
-                 if (genId !== AppState.generationId) return;
-                 if (vidId) PlayerService.initYouTube({type: 'video_id', id: vidId}, channel, genId);
-                 else PlayerService.initYouTube({type: 'channel_live', id: channel.channelId}, channel, genId);
-             });
+        if (toggle === 1) {
+            // Secondary Stream (RSS Offset 1)
+            this.showBanner(channel.name, 1);
+            DataService.fetchRSS(channel.channelId, 1).then(vidId => {
+                 if (genId !== AppState.activeLoadId) return;
+                 if (vidId) PlayerService.initYouTube(divId, {type: 'video_id', id: vidId}, channel, genId);
+                 else PlayerService.initYouTube(divId, {type: 'channel_live', id: channel.channelId}, channel, genId);
+            });
         } else {
-            // Primary Direct Stream
-            PlayerService.initYouTube({type: 'channel_live', id: channel.channelId}, channel, genId);
+            // Primary Direct
+            this.showBanner(channel.name, 0);
+            PlayerService.initYouTube(divId, {type: 'channel_live', id: channel.channelId}, channel, genId);
         }
     } 
-      
-    // 4. Standard Direct / Auto-RSS
     else if (channel.type === 'hybrid' || channel.type === 'auto-rss') {
         const isAlt = (toggle === 1 && channel.type === 'hybrid');
         this.showBanner(channel.name, isAlt ? 1 : 0);
         DataService.fetchRSS(channel.channelId, isAlt ? 1 : 0).then(vidId => {
-             if (genId !== AppState.generationId) return;
-             if (vidId) PlayerService.initYouTube({type: 'video_id', id: vidId}, channel, genId);
-             else PlayerService.initYouTube({type: 'channel_live', id: channel.channelId}, channel, genId);
+             if (genId !== AppState.activeLoadId) return;
+             if (vidId) PlayerService.initYouTube(divId, {type: 'video_id', id: vidId}, channel, genId);
+             else PlayerService.initYouTube(divId, {type: 'channel_live', id: channel.channelId}, channel, genId);
         });
     } 
     else if (channel.type === 'direct') {
         if (toggle === 1 && channel.fallback) {
             this.showBanner(channel.name, 1);
-            PlayerService.initYouTube({type: 'video_id', id: channel.fallback}, channel, genId);
+            PlayerService.initYouTube(divId, {type: 'video_id', id: channel.fallback}, channel, genId);
         } else {
             this.showBanner(channel.name, 0);
-            PlayerService.initYouTube({type: 'channel_live', id: channel.channelId}, channel, genId);
+            PlayerService.initYouTube(divId, {type: 'channel_live', id: channel.channelId}, channel, genId);
         }
     }
   }
 };
-  
-// Start App
+
+// Start the Application
 App.init();
 </script>
 </body>
