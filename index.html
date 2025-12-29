@@ -10,7 +10,8 @@
   <link rel="dns-prefetch" href="https://www.youtube.com">
   <link rel="dns-prefetch" href="https://api.rss2json.com">
 
-  <link rel="icon" href="https://i.postimg.cc/FRDPFKpY/favicon-96x96.png" type="image/png">
+  <link rel="icon" href="favicon.png" type="image/png">
+  
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Gurmukhi:wght@400;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <script src="https://www.youtube.com/iframe_api"></script>
@@ -88,11 +89,11 @@
       outline: none; 
     }
 
-    /* --- TOGGLE BUTTON STYLES --- */
+    /* --- TOGGLE BUTTON STYLES (UPDATED: TOP LEFT) --- */
     #toggleBtn {
       position: absolute;
       top: 25px;
-      right: 25px;
+      left: 25px; /* Moved to Left */
       width: 50px;
       height: 50px;
       border-radius: 50%;
@@ -174,7 +175,7 @@
       height: 100%;
       display: none; 
       z-index: 1; 
-      background: url("https://i.postimg.cc/053WPD28/haarimandr.png") no-repeat center center;
+      background: url("haarimandr.png") no-repeat center center;
       background-size: cover; 
       font-family: "Arial Black", sans-serif;
     }
@@ -227,7 +228,7 @@ const CHANNELS = [
     allowToggle: true,
     isRadioHybrid: true,
     radioUrl: "https://live.sgpc.net:8443/;",
-    radioImage: "https://i.postimg.cc/qvVf6r1m/audioharimandar.png"
+    radioImage: "audioharimandar.png"
   },
 
   // CH 3: FATEHGARH SAHIB - Toggle/Dual Stream
@@ -257,8 +258,7 @@ const OVERLAY = document.getElementById('overlay');
 const toggleBtn = document.getElementById('toggleBtn');
 const BG_AUDIO = document.getElementById('bg-audio');
 
-// --- UPDATED AUDIO SOURCE (LOCAL FILE) ---
-// Make sure you upload 'sukhmani.mp3' to your root folder
+// LOCAL AUDIO FILE
 const SUKHMANI_URL = "sukhmani.mp3";
 
 let currentChannel = parseInt(localStorage.getItem('currentChannel')) || 0;
@@ -357,7 +357,6 @@ function loadChannel(index, toggle = 0) {
   // --- BUTTON LOGIC ---
   if (channel.allowToggle) {
       toggleBtn.style.display = 'flex';
-      // Reset Button State for new channel load
       toggleBtn.textContent = 'A';
       toggleBtn.className = 'toggle-A'; 
   } else {
@@ -652,3 +651,4 @@ loadChannel(currentChannel);
 </script>
 </body>
 </html>
+
