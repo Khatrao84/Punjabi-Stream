@@ -17,84 +17,28 @@
   <script src="https://www.youtube.com/iframe_api"></script>
 
   <style>
-    /* --- YOUR ORIGINAL DESIGN PRESERVED --- */
+    /* --- CORE STYLES --- */
     html, body {
-      margin: 0; 
-      padding: 0; 
-      height: 100%;
-      background-color: black; 
-      font-family: "Noto Sans Gurmukhi", sans-serif;
-      overflow: hidden; 
-      -webkit-tap-highlight-color: transparent; 
-      user-select: none;
-      cursor: none;
+      margin: 0; padding: 0; height: 100%;
+      background-color: black; font-family: "Noto Sans Gurmukhi", sans-serif;
+      overflow: hidden; -webkit-tap-highlight-color: transparent; 
+      user-select: none; cursor: none;
     }
-    body.user-active { 
-      cursor: default; 
-    }
+    body.user-active { cursor: default; }
     
-    #container { 
-      position: relative; 
-      width: 100vw; 
-      height: 100vh; 
-    }
-
-    #stream { 
-      position: absolute; 
-      top: 0; 
-      left: 0; 
-      width: 100%; 
-      height: 100%; 
-      z-index: 0; 
-    }
-
-    .video-placeholder { 
-      width: 100%; 
-      height: 100%; 
-      background: black; 
-    }
+    #container { position: relative; width: 100vw; height: 100vh; }
+    #stream { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
+    .video-placeholder { width: 100%; height: 100%; background: black; }
     
-    #hls-video { 
-      position: absolute; 
-      top: 0; 
-      left: 0; 
-      width: 100%; 
-      height: 100%; 
-      object-fit: cover; 
-      z-index: 1; 
-      display: none; 
-    }
-
-    /* BACKGROUND IMAGE FOR CH 2 AUDIO MODE */
-    #audio-bg {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-position: center;
-      background-size: cover;
-      background-repeat: no-repeat;
-      z-index: 1; 
-      display: none;
-    }
-
-    #overlay { 
-      position: absolute; 
-      top: 0; 
-      left: 0; 
-      width: 100%; 
-      height: 100%; 
-      z-index: 2; 
-      cursor: pointer; 
-      outline: none; 
-    }
+    #hls-video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; display: none; }
+    #audio-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-position: center; background-size: cover; z-index: 1; display: none; }
+    #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; cursor: pointer; outline: none; }
 
     /* TOGGLE BUTTON - BOTTOM LEFT */
     #toggleBtn {
       position: absolute;
       bottom: 25px;
-      left: 0px; /* BOTTOM Left Position */
+      left: 0px; 
       width: 25px;
       height: 25px;
       border-radius: 50%;
@@ -110,32 +54,25 @@
       border: 2px solid rgba(255, 255, 255, 0.2);
       transition: transform 0.2s ease;
     }
-    #toggleBtn:active {
-      transform: scale(0.9);
-    }
-    /* State A: Gold Text, Blue Back */
-    .toggle-A { 
-      background-color: #00296B; 
-      color: #FFD700; 
-    }
-    /* State B: Blue Text, Gold Back */
-    .toggle-B { 
-      background-color: #FFD700; 
-      color: #00296B; 
-    }
+    #toggleBtn:active { transform: scale(0.9); }
+    .toggle-A { background-color: #00296B; color: #FFD700; }
+    .toggle-B { background-color: #FFD700; color: #00296B; }
     
+    /* --- CENTERED TEXT FIX --- */
     #channelName {
       position: absolute; 
-      bottom: -80px; 
+      bottom: 0; 
       left: 0; 
       width: 100%;
-      padding: 15px 20px; 
+      /* FIX: Equal padding makes it centered */
+      padding: 20px; 
       font-size: 24px; 
       font-weight: bold;
       text-align: center; 
-      opacity: 0; 
-      transition: all 0.6s ease; 
       z-index: 3;
+      transform: translateY(100%); 
+      opacity: 0;
+      transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.5s ease;
     }
     .style-main { 
       background-color: rgba(0, 41, 107, 0.9) !important; 
@@ -146,137 +83,91 @@
       color: #00296B !important; 
     }
     #channelName.show { 
-      bottom: 0; 
+      transform: translateY(0); 
       opacity: 1; 
     }
     
     .loading {
-      position: absolute; 
-      top: 50%; 
-      left: 50%; 
-      transform: translate(-50%, -50%);
-      width: 60px; 
-      height: 60px; 
-      border: 6px solid rgba(255, 213, 0, 0.2);
-      border-radius: 50%; 
-      border-top-color: #ffd500;
-      animation: spin 1s linear infinite; 
-      z-index: 4; 
-      display: none;
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      width: 60px; height: 60px; border: 6px solid rgba(255, 213, 0, 0.2);
+      border-radius: 50%; border-top-color: #ffd500;
+      animation: spin 1s linear infinite; z-index: 4; display: none;
     }
-    @keyframes spin { 
-      to { transform: translate(-50%, -50%) rotate(360deg); } 
-    }
+    @keyframes spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
     
     #time-tv {
-      position: absolute; 
-      top: 0; 
-      left: 0; 
-      width: 100%; 
-      height: 100%;
-      display: none; 
-      z-index: 1; 
-      background: url("haarimandr.png") no-repeat center center;
-      background-size: cover; 
-      font-family: "Arial Black", sans-serif;
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; z-index: 1; 
+      background: url("haarimandr.png") no-repeat center center; background-size: cover; font-family: "Arial Black", sans-serif;
     }
-    #time-tv .clock { 
-      position: absolute; 
-      top: 6%; 
-      right: 3%; 
-      font-size: 8.7vw; 
-      color: #FFD700; 
-      text-shadow: 0 0 10px #FFD700; 
-    }
-    #time-tv .date { 
-      position: absolute; 
-      top: 2%; 
-      right: 3.5%; 
-      font-size: 3vw; 
-      color: #FFE066; 
-    }
+    #time-tv .clock { position: absolute; top: 6%; right: 3%; font-size: 8.7vw; color: #FFD700; text-shadow: 0 0 10px #FFD700; }
+    #time-tv .date { position: absolute; top: 2%; right: 3.5%; font-size: 3vw; color: #FFE066; }
   </style>
 </head>
 <body>
   <div id="container">
     <div id="stream"></div>
     <video id="hls-video" playsinline></video>
-    
     <audio id="bg-audio" preload="auto"></audio>
-    
     <div id="audio-bg"></div>
-    
     <div id="time-tv"><div class="clock"></div><div class="date"></div></div>
     
     <div id="toggleBtn" class="toggle-A">A</div>
-    
     <div id="overlay" tabindex="0"></div>
     <div id="channelName" class="style-main"></div>
     <div class="loading" id="loading"></div>
   </div>
 
 <script>
+  
 /**
- * --------------------------------------------------------------------------
- * APP CONFIGURATION
- * --------------------------------------------------------------------------
+ * --- CONFIGURATION ---
  */
 const Config = {
   SCROLL_SPEED_MS: 350,
-  AUTO_REFRESH_MS: 10800000, // 3 Hours
+  AUTO_REFRESH_MS: 10800000, 
   LOAD_TIMEOUT_MS: 8000,
   RSS_FETCH_TIMEOUT: 5000,
   KEY_THROTTLE_MS: 400,
-  // Local files must be in the same folder
   LOCAL_AUDIO_FILE: "sukhmani.mp3",
   LOCAL_RADIO_IMG: "audioharimandar.png"
 };
 
 const CHANNELS = [
-  // CH 1: Patna Sahib (Direct / Fallback Toggle)
-  { name: "1. ਪਟਨਾ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCwsMainbmOyv-72To2PuxuA", fallback: "TTK7eNuI3M0", type: "direct", allowToggle: true },
+  // CH 1
+  { name: "1. ਸ਼੍ਰੀ ਪਟਨਾ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCwsMainbmOyv-72To2PuxuA", fallback: "TTK7eNuI3M0", type: "direct", allowToggle: true },
   
-  // CH 2: Amritsar (Hybrid: Video / Radio)
-  { 
-    name: "2. ਅੰਮ੍ਰਿਤਸਰ ਸਾਹਿਬ ਲਾਈਵ", 
-    channelId: "UCYn6UEtQ771a_OWSiNBoG8w", 
-    type: "direct-rss", 
-    allowToggle: true,
-    isRadioHybrid: true,
-    radioUrl: "https://live.sgpc.net:8443/;",
-    radioImage: Config.LOCAL_RADIO_IMG
-  },
+  // CH 2
+  { name: "2. ਸ਼੍ਰੀ ਅੰਮ੍ਰਿਤਸਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCYn6UEtQ771a_OWSiNBoG8w", type: "direct-rss", allowToggle: true, isRadioHybrid: true, radioUrl: "https://live.sgpc.net:8443/;", radioImage: Config.LOCAL_RADIO_IMG },
 
-  // CH 3: Fatehgarh Sahib (Direct / RSS Toggle)
-  { name: "3. ਫਤੇਹਗੜ੍ਹ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCudVHqnOekwcvpzNpY8_ERw", type: "direct-rss", allowToggle: true },
+  // CH 3
+  { name: "3. ਸ਼੍ਰੀ ਫਤੇਹਗੜ੍ਹ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCudVHqnOekwcvpzNpY8_ERw", type: "direct-rss", allowToggle: true },
 
-   // Standard Channels
-  { name: "4. ਬਾਬਾ ਦੀਪ ਸਿੰਘ ਜੀ ਅੰਮ੍ਰਿਤਸਰ ਲਾਈਵ", channelId: "UCxWx-MPft_7mKrFtN6uOaAA", type: "direct" },
-  { name: "5. ਆਨੰਦਪੁਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCSx5035_us8h8DOp_YhQDaw", type: "direct" },
-  { name: "6. ਦਮਦਮਾ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCY8jMpyRRcdzSf6uLiU6izQ", type: "direct" },
-  { name: "7. ਦੂਖ-ਨਿਵਾਰਨ ਸਾਹਿਬ ਲੁਧਿਆਣਾ ਲਾਈਵ", channelId: "UCPKPN4bzM8Ja-F_kIEZoAhA", type: "direct-rss" },
-  { name: "8. ਬੰਗਲਾ ਸਾਹਿਬ ਦਿੱਲੀ ਲਾਈਵ", channelId: "UCA1Jqo-WXVuMgs4WcD5f5Yw", type: "auto-rss" },
-  { name: "9. ਹਜ਼ੂਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCuerQ47I9Y2qxr4eIopxbYw", type: "direct" },
-  
-  // CH 0: Time / Audio (Pause-Resume)
+  // CH 4-14
+  { name: "4. ਸ਼੍ਰੀ ਕੋਤਵਾਲੀ ਸਾਹਿਬ ਮੋਰਿੰਡਾ ਲਾਈਵ", channelId: "UCri5TwOgoDY3ywUDK9Ar1Lg", type: "direct" },
+  { name: "5. ਸ਼੍ਰੀ ਆਨੰਦਪੁਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCSx5035_us8h8DOp_YhQDaw", type: "direct" },
+  { name: "6. ਸ਼੍ਰੀ ਦਮਦਮਾ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCY8jMpyRRcdzSf6uLiU6izQ", type: "direct" },
+  { name: "7. ਸ਼੍ਰੀ ਦੂਖ-ਨਿਵਾਰਨ ਸਾਹਿਬ ਲੁਧਿਆਣਾ ਲਾਈਵ", channelId: "UCPKPN4bzM8Ja-F_kIEZoAhA", type: "direct-rss" },
+  { name: "8. ਸ਼੍ਰੀ ਦੂਖ-ਨਿਵਾਰਨ ਸਾਹਿਬ ਪਟਿਆਲਾੀ ਲਾਈਵ", channelId: "UC7Uf4ZOlCGM3zBCLqcNPtJg", type: "direct-rss" },
+  { name: "9. ਸ਼੍ਰੀ ਬਾਬਾ ਦੀਪ ਸਿੰਘ ਜੀ ਅੰਮ੍ਰਿਤਸਰ ਲਾਈਵ", channelId: "UCxWx-MPft_7mKrFtN6uOaAA", type: "direct" },
+  { name: "10. ਸ਼੍ਰੀ ਪੰਜੋਖਰਾ ਸਾਹਿਬ ਅੰਬਾਲਾ ਲਾਈਵ", channelId: "UCWd5TUzbLUe6_TWKW9vaDmQ", type: "direct" },
+  { name: "11. ਸ਼੍ਰੀ ਬੰਗਲਾ ਸਾਹਿਬ ਦਿੱਲੀ ਲਾਈਵ", channelId: "UCA1Jqo-WXVuMgs4WcD5f5Yw", type: "auto-rss" },
+  { name: "12. ਸ਼੍ਰੀ ਸੀਸ ਗੰਜ ਸਾਹਿਬ ਦਿੱਲੀ ਲਾਈਵ", channelId: "UCm0p8BmL4d914gBefceFxxA", type: "direct" },
+  { name: "13. ਸ਼੍ਰੀ ਸਿੰਘ ਸ਼ਹੀਦਾਂ ਸਾਹਿਬ ਸੋਹਾਣਾ ਲਾਈਵ", channelId: "UCflFRcHHT8Ab7AvjvIVcrQA", type: "direct" },
+  { name: "14. ਸ਼੍ਰੀ ਹਜ਼ੂਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCuerQ47I9Y2qxr4eIopxbYw", type: "direct" },
+
+  // CH 0
   { name: "0. ਸੁਖਮਨੀ ਸਾਹਿਬ", type: "time", allowToggle: true }
 ];
 
 /**
- * --------------------------------------------------------------------------
- * APP STATE MANAGEMENT (Robust Logic)
- * --------------------------------------------------------------------------
+ * --- APP STATE ---
  */
 const AppState = {
   currentChannel: parseInt(localStorage.getItem('currentChannel')) || 0,
   streamToggle: 0,
-  activeLoadId: 0, // Critical for preventing race conditions
-  timers: {
-    load: null,
-    banner: null,
-    watchdog: null,
-    refresh: null
-  }
+  activeLoadId: 0, 
+  lastScrollTime: 0, 
+  timers: { load: null, banner: null, watchdog: null, refresh: null }
 };
 
 // DOM Cache
@@ -296,146 +187,83 @@ const UI = {
 };
 
 /**
- * --------------------------------------------------------------------------
- * PLAYER LOGIC
- * --------------------------------------------------------------------------
+ * --- PLAYER LOGIC ---
  */
 const PlayerService = {
-  ytPlayer: null,
-  hls: null,
+  ytPlayer: null, hls: null,
 
-  // Robust Cleanup: Prevents memory leaks and stuck players
   cleanup() {
-    // 1. Destroy YouTube
     if (this.ytPlayer) {
       if(typeof this.ytPlayer.stopVideo === 'function') try { this.ytPlayer.stopVideo(); } catch(e){}
       if(typeof this.ytPlayer.destroy === 'function') try { this.ytPlayer.destroy(); } catch(e){}
     }
     this.ytPlayer = null;
+    if (this.hls) { try { this.hls.destroy(); } catch(e){} this.hls = null; }
 
-    // 2. Destroy HLS
-    if (this.hls) {
-      try { this.hls.destroy(); } catch(e){}
-      this.hls = null;
-    }
-
-    // 3. Reset Audio & Backgrounds
-    UI.bgAudio.pause();
-    UI.bgAudio.src = "";
-    UI.bgAudio.currentTime = 0; // Force reset
-    UI.audioBg.style.display = 'none';
-    UI.timeTv.style.display = 'none';
-
-    // 4. Wipe Video Container
-    UI.stream.innerHTML = ''; 
-    UI.hlsVideo.pause();
-    UI.hlsVideo.src = "";
-    UI.hlsVideo.style.display = 'none';
-    
-    // 5. Clear Watchdogs
+    UI.bgAudio.pause(); UI.bgAudio.src = ""; UI.bgAudio.currentTime = 0; 
+    UI.audioBg.style.display = 'none'; UI.timeTv.style.display = 'none';
+    UI.stream.innerHTML = ''; UI.hlsVideo.pause(); UI.hlsVideo.src = ""; UI.hlsVideo.style.display = 'none';
     clearTimeout(AppState.timers.watchdog);
   },
 
-  // Initialize YouTube with aggressive Fallback handling
   initYouTube(divId, videoData, channelObj, loadId) {
-    // Safety check: Don't load if user already switched channel
     if (loadId !== AppState.activeLoadId) return;
+    if (!window.YT || !window.YT.Player) { setTimeout(() => this.initYouTube(divId, videoData, channelObj, loadId), 100); return; }
 
-    if (!window.YT || !window.YT.Player) {
-        setTimeout(() => this.initYouTube(divId, videoData, channelObj, loadId), 100);
-        return;
-    }
-
-    // Embed logic for Channel Live vs Video ID
     if (videoData.type === 'channel_live') {
        const embedUrl = `https://www.youtube.com/embed/live_stream?channel=${videoData.id}&autoplay=1&mute=1&controls=0&enablejsapi=1&origin=${window.location.origin}`;
        const iframe = document.createElement('iframe');
-       iframe.id = divId; iframe.src = embedUrl; 
-       iframe.style.width = "100%"; iframe.style.height = "100%"; iframe.style.border = "none"; 
-       iframe.allow = "autoplay; fullscreen";
+       iframe.id = divId; iframe.src = embedUrl; iframe.style.width = "100%"; iframe.style.height = "100%"; iframe.style.border = "none"; iframe.allow = "autoplay; fullscreen";
        document.getElementById(divId).replaceWith(iframe);
-       
-       this.ytPlayer = new YT.Player(divId, {
-           events: { 
-               'onReady': (e) => this.onPlayerReady(e, loadId),
-               'onStateChange': (e) => this.onStateChange(e, channelObj, loadId),
-               'onError': (e) => this.onError(e, videoData, channelObj, loadId, divId)
-           }
-       });
+       this.ytPlayer = new YT.Player(divId, { events: { 'onReady': (e) => this.onPlayerReady(e, loadId), 'onStateChange': (e) => this.onStateChange(e, channelObj, loadId), 'onError': (e) => this.onError(e, videoData, channelObj, loadId, divId) } });
     } else {
        this.ytPlayer = new YT.Player(divId, {
            height: '100%', width: '100%', videoId: videoData.id,
            playerVars: { 'autoplay': 1, 'mute': 1, 'controls': 0, 'rel': 0, 'modestbranding': 1, 'iv_load_policy': 3, 'fs': 0 },
-           events: { 
-               'onReady': (e) => this.onPlayerReady(e, loadId),
-               'onStateChange': (e) => this.onStateChange(e, channelObj, loadId),
-               'onError': (e) => this.onError(e, videoData, channelObj, loadId, divId)
-           }
+           events: { 'onReady': (e) => this.onPlayerReady(e, loadId), 'onStateChange': (e) => this.onStateChange(e, channelObj, loadId), 'onError': (e) => this.onError(e, videoData, channelObj, loadId, divId) }
        });
     }
   },
 
   onPlayerReady(event, loadId) {
     if (loadId !== AppState.activeLoadId) return;
-    UI.loading.style.display = 'none';
-    event.target.playVideo();
-    setTimeout(() => { try { event.target.unMute(); } catch(e){} }, 500);
-    setTimeout(() => { try { event.target.unMute(); } catch(e){} }, 2000);
+    UI.loading.style.display = 'none'; event.target.playVideo();
+    setTimeout(() => { try { event.target.unMute(); } catch(e){} }, 500); setTimeout(() => { try { event.target.unMute(); } catch(e){} }, 2000);
   },
 
   onStateChange(event, channelObj, loadId) {
     if (loadId !== AppState.activeLoadId) return;
-    
-    // CRITICAL: Aggressively wipe old player if stream ends to avoid "Related Videos"
-    if (event.data === YT.PlayerState.ENDED) {
-         if (channelObj.fallback) {
-             console.log("Stream Ended. Wiping and switching to fallback.");
-             UI.stream.innerHTML = ''; // Immediate Wipe
-             const newDivId = `yt-fallback-${Date.now()}`;
-             UI.stream.innerHTML = `<div id="${newDivId}" class="video-placeholder"></div>`;
-             this.initYouTube(newDivId, {type: 'video_id', id: channelObj.fallback}, channelObj, loadId);
-         }
+    if (event.data === YT.PlayerState.ENDED && channelObj.fallback) {
+         UI.stream.innerHTML = ''; 
+         const newDivId = `yt-fallback-${Date.now()}`;
+         UI.stream.innerHTML = `<div id="${newDivId}" class="video-placeholder"></div>`;
+         this.initYouTube(newDivId, {type: 'video_id', id: channelObj.fallback}, channelObj, loadId);
     }
   },
 
   onError(event, videoData, channelObj, loadId, divId) {
     if (loadId !== AppState.activeLoadId) return;
-    console.log("YT Error:", event.data);
-    
-    // Recovery Logic: Direct -> RSS
     if (channelObj.type === 'direct-rss' && videoData.type === 'channel_live') {
         UI.loading.style.display = 'block';
         DataService.fetchRSS(channelObj.channelId).then(vidId => {
              if (loadId === AppState.activeLoadId && vidId) {
-                 this.cleanup(); // Clean before retry
-                 UI.stream.style.display = 'block';
+                 this.cleanup(); UI.stream.style.display = 'block';
                  const newDivId = `yt-rss-${Date.now()}`;
                  UI.stream.innerHTML = `<div id="${newDivId}" class="video-placeholder"></div>`;
                  this.initYouTube(newDivId, {type: 'video_id', id: vidId}, channelObj, loadId);
-             } else {
-                 UI.loading.style.display = 'none';
-             }
+             } else { UI.loading.style.display = 'none'; }
         });
         return;
     }
-
-    // Recovery Logic: Fallback
     if (channelObj.fallback && videoData.id !== channelObj.fallback) {
-         this.cleanup();
-         UI.stream.style.display = 'block';
+         this.cleanup(); UI.stream.style.display = 'block';
          const newDivId = `yt-fb-${Date.now()}`;
          UI.stream.innerHTML = `<div id="${newDivId}" class="video-placeholder"></div>`;
          this.initYouTube(newDivId, {type: 'video_id', id: channelObj.fallback}, channelObj, loadId);
-    } else {
-        UI.loading.style.display = 'none'; 
-    }
+    } else { UI.loading.style.display = 'none'; }
   }
 };
 
-/*--------------------------------------------------------------------------
- * DATA SERVICE (RSS Fetcher)
- * --------------------------------------------------------------------------*/
-  
 const DataService = {
   async fetchRSS(channelId, offset = 0) {
     const controller = new AbortController();
@@ -446,32 +274,21 @@ const DataService = {
       clearTimeout(timeout);
       if (!res.ok) throw new Error("RSS Error");
       const data = await res.json();
-      if (data.items && data.items.length > offset) {
-          return data.items[offset].link.split('v=')[1];
-      }
+      if (data.items && data.items.length > offset) return data.items[offset].link.split('v=')[1];
       return null;
-    } catch (e) {
-      console.warn("RSS Fetch Failed", e);
-      return null;
-    }
+    } catch (e) { return null; }
   }
 };
 
-/* --------------------------------------------------------------------------
- * APP CONTROLLER
- * -------------------------------------------------------------------------- */
-  
+/**
+ * --- APP CONTROLLER ---
+ */
 const App = {
   init() {
-    // Initial Load
     AppState.activeLoadId++;
     this.loadChannel(AppState.currentChannel, 0);
-    
-    // Events
     this.setupInputs();
     this.setupClock();
-    
-    // Robustness: Auto Refresh
     AppState.timers.refresh = setTimeout(() => window.location.reload(), Config.AUTO_REFRESH_MS);
   },
 
@@ -481,52 +298,56 @@ const App = {
       UI.clock.textContent = now.toLocaleTimeString('en-US', { hour12: true });
       UI.date.textContent = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     };
-    setInterval(update, 1000);
-    update();
+    setInterval(update, 1000); update();
   },
 
-    setupInputs() {
-    // 1. Mouse Wake
+  setupInputs() {
     let cursorTimeout;
     const wakeUI = () => {
         document.body.classList.add('user-active');
         clearTimeout(cursorTimeout);
         cursorTimeout = setTimeout(() => document.body.classList.remove('user-active'), 3000);
     };
-    window.addEventListener('mousemove', wakeUI);
-    window.addEventListener('click', wakeUI);
+    window.addEventListener('mousemove', wakeUI); window.addEventListener('click', wakeUI);
 
-    // 2. Toggle Button
-    UI.toggleBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.triggerChannelLoad(AppState.currentChannel); 
-    });
-
-    // 3. Overlay Click
+    UI.toggleBtn.addEventListener('click', (e) => { e.stopPropagation(); this.triggerChannelLoad(AppState.currentChannel); });
     UI.overlay.addEventListener('click', () => this.changeChannel(1));
 
-    // 4. Keyboard Controls (UPDATED WITH LG CODES)
+    // KEYBOARD (With Double Digit Support)
+    let keyBuffer = "";
+    let bufferTimer = null;
+
     window.addEventListener('keydown', (e) => {
       const k = e.key; const c = e.keyCode; const now = Date.now();
       
-      // Original Throttle (200ms)
-      if (now - AppState.lastScrollTime < Config.KEY_THROTTLE_MS) return; 
-      AppState.lastScrollTime = now;
+      if (!/^[0-9]$/.test(k)) {
+          if (now - AppState.lastScrollTime < Config.KEY_THROTTLE_MS) return; 
+          AppState.lastScrollTime = now;
+      }
       wakeUI();
 
-      // ADDED: LG/Samsung Keys (427, 428, 33, 34)
       if (k === "ArrowRight" || k === "ArrowUp" || k === "ChannelUp" || c === 427 || k === "PageUp" || c === 33) {
-        e.preventDefault(); 
-        this.changeChannel(1);
+        e.preventDefault(); this.changeChannel(1);
       } else if (k === "ArrowLeft" || k === "ArrowDown" || k === "ChannelDown" || c === 428 || k === "PageDown" || c === 34) {
-        e.preventDefault(); 
-        this.changeChannel(-1);
-      } else if (/^[1-9]$/.test(k)) {
-        e.preventDefault(); 
-        this.triggerChannelLoad(parseInt(k, 10) - 1);
-      } else if (k === "0") {
-        e.preventDefault(); 
-        this.triggerChannelLoad(9);
+        e.preventDefault(); this.changeChannel(-1);
+      } 
+      
+      // NUMBER INPUT
+      else if (/^[0-9]$/.test(k)) {
+        e.preventDefault();
+        keyBuffer += k;
+        
+        clearTimeout(bufferTimer);
+        bufferTimer = setTimeout(() => {
+            const num = parseInt(keyBuffer, 10);
+            keyBuffer = "";
+            let targetIndex = -1;
+            
+            if (num === 0) targetIndex = CHANNELS.findIndex(ch => ch.name.startsWith("0."));
+            else targetIndex = CHANNELS.findIndex(ch => ch.name.startsWith(num + "."));
+
+            if (targetIndex !== -1) this.triggerChannelLoad(targetIndex);
+        }, 1200); // 1.2s to type second digit
       }
     });
   },
@@ -540,44 +361,26 @@ const App = {
     const isSame = (AppState.currentChannel === index);
     const channel = CHANNELS[index];
 
-    // Special Case: Ch 0 Pause/Resume Logic (Don't Reload)
-    if (isSame && channel.type === 'time') {
-        this.toggleCh0Audio();
-        return;
-    }
-
-    if (isSame && channel.allowToggle) {
-        AppState.streamToggle = (AppState.streamToggle === 0) ? 1 : 0;
-    } else {
-        AppState.streamToggle = 0;
-    }
+    if (isSame && channel.type === 'time') { this.toggleCh0Audio(); return; }
+    if (isSame && channel.allowToggle) AppState.streamToggle = (AppState.streamToggle === 0) ? 1 : 0;
+    else AppState.streamToggle = 0;
 
     AppState.currentChannel = index;
     this.showBanner(channel.name, AppState.streamToggle);
     
-    // Debounce
     clearTimeout(AppState.timers.load);
-    AppState.activeLoadId++; 
-    const thisId = AppState.activeLoadId;
-
-    AppState.timers.load = setTimeout(() => {
-      if (thisId === AppState.activeLoadId) {
-          this.loadChannel(index, AppState.streamToggle);
-      }
-    }, Config.SCROLL_SPEED_MS);
+    AppState.activeLoadId++; const thisId = AppState.activeLoadId;
+    AppState.timers.load = setTimeout(() => { if (thisId === AppState.activeLoadId) this.loadChannel(index, AppState.streamToggle); }, Config.SCROLL_SPEED_MS);
   },
 
   toggleCh0Audio() {
     if (UI.bgAudio.paused) {
-        UI.bgAudio.play()
-          .then(() => {
+        UI.bgAudio.play().then(() => {
              UI.toggleBtn.textContent = 'B'; UI.toggleBtn.className = 'toggle-B';
              this.showBanner("0. ਸੁਖਮਨੀ ਸਾਹਿਬ (Playing)", 1);
-          })
-          .catch(() => this.showBanner("Error: Audio Blocked", 0));
+        }).catch(() => this.showBanner("Error: Audio Blocked", 0));
     } else {
-        UI.bgAudio.pause();
-        UI.toggleBtn.textContent = 'A'; UI.toggleBtn.className = 'toggle-A';
+        UI.bgAudio.pause(); UI.toggleBtn.textContent = 'A'; UI.toggleBtn.className = 'toggle-A';
         this.showBanner("0. ਸੁਖਮਨੀ ਸਾਹਿਬ (Paused)", 0);
     }
   },
@@ -595,53 +398,30 @@ const App = {
     localStorage.setItem('currentChannel', index);
     
     UI.loading.style.display = 'block';
-    PlayerService.cleanup(); // Clean slate
+    PlayerService.cleanup(); 
+    AppState.timers.watchdog = setTimeout(() => { if (genId === AppState.activeLoadId) UI.loading.style.display = 'none'; }, Config.LOAD_TIMEOUT_MS);
 
-    // Watchdog Timer
-    AppState.timers.watchdog = setTimeout(() => {
-      if (genId === AppState.activeLoadId) UI.loading.style.display = 'none';
-    }, Config.LOAD_TIMEOUT_MS);
+    if (channel.allowToggle) { UI.toggleBtn.style.display = 'flex'; UI.toggleBtn.textContent = (toggle === 0) ? 'A' : 'B'; UI.toggleBtn.className = (toggle === 0) ? 'toggle-A' : 'toggle-B'; } 
+    else { UI.toggleBtn.style.display = 'none'; }
 
-    // Toggle Button UI
-    if (channel.allowToggle) {
-        UI.toggleBtn.style.display = 'flex';
-        UI.toggleBtn.textContent = (toggle === 0) ? 'A' : 'B';
-        UI.toggleBtn.className = (toggle === 0) ? 'toggle-A' : 'toggle-B';
-    } else {
-        UI.toggleBtn.style.display = 'none';
-    }
-
-    // --- LOGIC: CH 0 (Time/Audio) ---
     if (channel.type === 'time') {
-      UI.timeTv.style.display = 'block';
-      UI.loading.style.display = 'none';
-      UI.bgAudio.src = Config.LOCAL_AUDIO_FILE;
-      UI.bgAudio.currentTime = 0; 
-      UI.bgAudio.volume = 1.0;
-      UI.bgAudio.load(); 
-      this.showBanner(channel.name, 0);
-      return;
+      UI.timeTv.style.display = 'block'; UI.loading.style.display = 'none';
+      UI.bgAudio.src = Config.LOCAL_AUDIO_FILE; UI.bgAudio.currentTime = 0; UI.bgAudio.volume = 1.0; UI.bgAudio.load(); 
+      this.showBanner(channel.name, 0); return;
     }
 
-    // --- LOGIC: CH 2 (Radio Hybrid) ---
     if (channel.isRadioHybrid && toggle === 1) {
-      UI.audioBg.style.backgroundImage = `url('${channel.radioImage}')`;
-      UI.audioBg.style.display = 'block';
-      UI.loading.style.display = 'none';
-      UI.bgAudio.src = channel.radioUrl;
-      UI.bgAudio.play().catch(e => console.warn(e));
-      this.showBanner(channel.name + " (Audio)", 1);
-      return;
+      UI.audioBg.style.backgroundImage = `url('${channel.radioImage}')`; UI.audioBg.style.display = 'block'; UI.loading.style.display = 'none';
+      UI.bgAudio.src = channel.radioUrl; UI.bgAudio.play().catch(e => console.warn(e));
+      this.showBanner(channel.name + " (Audio)", 1); return;
     }
 
-    // --- LOGIC: Video Modes ---
     const divId = `yt-player-${Date.now()}`;
     UI.stream.innerHTML = `<div id="${divId}" class="video-placeholder"></div>`;
     UI.stream.style.display = 'block';
 
     if (channel.type === 'direct-rss') {
         if (toggle === 1) {
-            // Secondary Stream (RSS Offset 1)
             this.showBanner(channel.name, 1);
             DataService.fetchRSS(channel.channelId, 1).then(vidId => {
                  if (genId !== AppState.activeLoadId) return;
@@ -649,7 +429,6 @@ const App = {
                  else PlayerService.initYouTube(divId, {type: 'channel_live', id: channel.channelId}, channel, genId);
             });
         } else {
-            // Primary Direct
             this.showBanner(channel.name, 0);
             PlayerService.initYouTube(divId, {type: 'channel_live', id: channel.channelId}, channel, genId);
         }
@@ -674,17 +453,8 @@ const App = {
     }
   }
 };
-App.init();  // Start the App
+  
+App.init(); 
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
