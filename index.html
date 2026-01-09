@@ -4,6 +4,13 @@
   <meta charset="UTF-8">
   <title>Gurbani Stream</title>
   
+  <link rel="manifest" href="manifest.json">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#000000">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+
   <link rel="preconnect" href="https://www.youtube.com">
   <link rel="preconnect" href="https://www.google.com">
   <link rel="preconnect" href="https://api.rss2json.com">
@@ -11,6 +18,7 @@
   <link rel="dns-prefetch" href="https://api.rss2json.com">
 
   <link rel="icon" href="favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="favicon.png">
   
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Gurmukhi:wght@400;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
@@ -40,7 +48,7 @@
       bottom: 0; 
       left: 0; 
       width: 100%;
-      /* Original Padding Restored */
+      /* Original Padding */
       padding: 20px; 
       font-size: 24px; 
       font-weight: bold;
@@ -110,7 +118,7 @@ const Config = {
 };
 
 const CHANNELS = [
-  // CH 0 (At Top)
+  // CH 0
   { name: "0. ਸੁਖਮਨੀ ਸਾਹਿਬ", type: "time", allowToggle: true },
 
   // CH 1
@@ -141,10 +149,7 @@ const CHANNELS = [
  */
 function getInitialChannel() {
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-  if (isMobile) {
-      return 0; // Android/iPhone always start at 0
-  }
-  // Others (Desktop) start at last saved
+  if (isMobile) return 0; // Mobile starts at 0
   const saved = parseInt(localStorage.getItem('currentChannel'));
   return isNaN(saved) ? 0 : saved;
 }
@@ -177,11 +182,12 @@ const UI = {
 };
 
 /**
- * --- WAKE LOCK SERVICE ---
+ * --- FULLSCREEN & WAKE LOCK SERVICE ---
  */
-const WakeLockService = {
+const SystemService = {
   wakeLock: null,
-  async request() {
+  
+  async requestWakeLock() {
     if ('wakeLock' in navigator) {
       try {
         this.wakeLock = await navigator.wakeLock.request('screen');
@@ -189,18 +195,35 @@ const WakeLockService = {
       } catch (err) { console.error(`${err.name}, ${err.message}`); }
     }
   },
+
+  enableFullscreenAndOrientation() {
+    // 1. Try Fullscreen
+    if (!document.fullscreenElement) {
+        if (UI.container.requestFullscreen) UI.container.requestFullscreen().catch(e => console.log(e));
+        else if (UI.container.webkitRequestFullscreen) UI.container.webkitRequestFullscreen(); 
+    }
+    // 2. Try Landscape Lock
+    if (screen.orientation && screen.orientation.lock) {
+        screen.orientation.lock('landscape').catch(e => console.log("Orientation lock blocked"));
+    }
+  },
+
   init() {
-    this.request();
-    // Re-request lock when page becomes visible again
+    this.requestWakeLock();
     document.addEventListener('visibilitychange', async () => {
-      if (this.wakeLock !== null && document.visibilityState === 'visible') {
-        await this.request();
-      }
+      if (this.wakeLock !== null && document.visibilityState === 'visible') await this.requestWakeLock();
     });
-    // Also try on first interaction as some browsers require it
-    const initLock = () => { this.request(); window.removeEventListener('click', initLock); window.removeEventListener('touchstart', initLock); };
-    window.addEventListener('click', initLock);
-    window.addEventListener('touchstart', initLock);
+    
+    // Attempt fullscreen/lock on first user interaction
+    const userInteract = () => {
+        this.enableFullscreenAndOrientation();
+        this.requestWakeLock();
+        // Remove listener after success so we don't spam it
+        window.removeEventListener('click', userInteract);
+        window.removeEventListener('touchstart', userInteract);
+    };
+    window.addEventListener('click', userInteract);
+    window.addEventListener('touchstart', userInteract);
   }
 };
 
@@ -304,7 +327,7 @@ const DataService = {
 const App = {
   init() {
     AppState.activeLoadId++;
-    WakeLockService.init(); 
+    SystemService.init(); 
     this.loadChannel(AppState.currentChannel, 0);
     this.setupInputs();
     this.setupClock();
@@ -369,7 +392,6 @@ const App = {
         const diffY = touchEndY - touchStartY;
 
         // SWIPE DETECTION (ANY DIRECTION)
-        // Checks if horizontal OR vertical movement exceeds threshold
         if (Math.abs(diffX) > Config.SWIPE_THRESHOLD || Math.abs(diffY) > Config.SWIPE_THRESHOLD) {
             AppState.suppressClick = true; // Block regular click
             // ANY Swipe = Go BACK (-1)
@@ -526,4 +548,3 @@ App.init();
 </script>
 </body>
 </html>
-
