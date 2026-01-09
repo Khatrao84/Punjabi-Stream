@@ -42,13 +42,14 @@
     #audio-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-position: center; background-size: cover; z-index: 1; display: none; }
     #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; cursor: pointer; outline: none; }
 
-    /* --- TEXT MOVED DOWN --- */
+    /* --- RESTORED TEXT POSITION --- */
     #channelName {
       position: absolute; 
       bottom: 0; 
       left: 0; 
       width: 100%;
-      padding: 20px 20px 20px 20px; 
+      /* REVERTED: Back to original padding */
+      padding: 20px; 
       font-size: 24px; 
       font-weight: bold;
       text-align: center; 
@@ -87,9 +88,9 @@
     /* --- INSTALL POPUP & BLUR BACKDROP --- */
     #installBackdrop {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0, 0, 0, 0.75); /* Dark Transparent Background */
-      backdrop-filter: blur(8px);       /* Blur Effect */
-      -webkit-backdrop-filter: blur(8px); /* Safari Blur */
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);       
+      -webkit-backdrop-filter: blur(8px); 
       z-index: 9998; display: none;
     }
 
@@ -497,6 +498,3 @@ App.init();
 </script>
 </body>
 </html>
-
-
-
