@@ -311,10 +311,17 @@ const DataService = {
 
 const App = {
   init() {
+    // ANDROID OVERRIDE: Always start at Ch 0
+    // We check userAgent to see if it contains "Android"
+    if (/Android/i.test(navigator.userAgent)) {
+        AppState.currentChannel = 0;
+    }
+
     AppState.activeLoadId++;
     this.loadChannel(AppState.currentChannel, 0);
     this.setupInputs();
     this.setupClock();
+    // No background services
     AppState.timers.refresh = setTimeout(() => window.location.reload(), Config.AUTO_REFRESH_MS);
   },
 
@@ -339,7 +346,6 @@ const App = {
     UI.toggleBtn.addEventListener('click', (e) => { e.stopPropagation(); this.triggerChannelLoad(AppState.currentChannel); });
     
     // --- FORCE LANDSCAPE CLICK HANDLER ---
-    // This is the key: click -> Request Fullscreen -> Lock Landscape
     UI.startBtn.addEventListener('click', () => {
         if (document.documentElement.requestFullscreen) {
             document.documentElement.requestFullscreen().then(() => {
@@ -498,7 +504,6 @@ const App = {
     }
   }
 };
-  
 App.init(); 
 </script>
 </body>
