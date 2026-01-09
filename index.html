@@ -29,6 +29,22 @@
     }
     body.user-active { cursor: default; }
 
+    /* --- ROTATION WRAPPER --- */
+    #main-ui {
+      position: relative;
+      width: 100%; height: 100%;
+      display: flex; justify-content: center; align-items: center;
+      overflow: hidden;
+    }
+
+    @media screen and (orientation: portrait) {
+        #main-ui {
+            width: 100vh; height: 100vw;
+            transform: rotate(90deg);
+            transform-origin: center center;
+        }
+    }
+
     /* --- VIDEO CONTAINER --- */
     #app-box {
       position: relative;
@@ -135,7 +151,6 @@
         margin-top: 20px; cursor: pointer; border: 2px solid white;
     }
     
-    /* Show Start Overlay on Mobile Portrait */
     @media screen and (orientation: portrait) and (max-width: 1024px) {
         #start-overlay { display: flex; }
     }
@@ -150,23 +165,27 @@
       <div style="margin-top:15px; font-size: 14px; opacity: 0.7;">This will force Landscape Mode</div>
   </div>
 
-  <div id="btn-prev" class="nav-btn">❮</div>
+  <div id="main-ui">
+      
+      <div id="btn-prev" class="nav-btn">❮</div>
 
-  <div id="app-box">
-    <div id="stream"></div>
-    <video id="hls-video" playsinline></video>
-    <audio id="bg-audio" preload="auto"></audio>
-    <div id="audio-bg"></div>
-    <div id="time-tv"><div class="clock"></div><div class="date"></div></div>
-    
-    <div id="toggleBtn" class="toggle-A">A</div>
-    <div id="overlay" tabindex="0"></div>
-    <div class="loading" id="loading"></div>
-    
-    <div id="channelName" class="style-main"></div>
+      <div id="app-box">
+        <div id="stream"></div>
+        <video id="hls-video" playsinline></video>
+        <audio id="bg-audio" preload="auto"></audio>
+        <div id="audio-bg"></div>
+        <div id="time-tv"><div class="clock"></div><div class="date"></div></div>
+        
+        <div id="toggleBtn" class="toggle-A">A</div>
+        <div id="overlay" tabindex="0"></div>
+        <div class="loading" id="loading"></div>
+        
+        <div id="channelName" class="style-main"></div>
+      </div>
+
+      <div id="btn-next" class="nav-btn">❯</div>
+
   </div>
-
-  <div id="btn-next" class="nav-btn">❯</div>
 
 <script>
 const Config = {
@@ -311,17 +330,18 @@ const DataService = {
 
 const App = {
   init() {
-    // ANDROID OVERRIDE: Always start at Ch 0
-    // We check userAgent to see if it contains "Android"
+    // --- ANDROID FIX: Start at Channel 0 (Sukhmani Sahib) ---
+    // Note: Channel 0 is at the END of the list (Index 14)
     if (/Android/i.test(navigator.userAgent)) {
-        AppState.currentChannel = 0;
+        // Find index of the channel named "0. ..."
+        const ch0Index = CHANNELS.findIndex(ch => ch.name.startsWith("0."));
+        if (ch0Index !== -1) AppState.currentChannel = ch0Index;
     }
 
     AppState.activeLoadId++;
     this.loadChannel(AppState.currentChannel, 0);
     this.setupInputs();
     this.setupClock();
-    // No background services
     AppState.timers.refresh = setTimeout(() => window.location.reload(), Config.AUTO_REFRESH_MS);
   },
 
@@ -355,7 +375,7 @@ const App = {
                 }
             }).catch(e => {
                 console.log("Fullscreen Request failed:", e);
-                UI.startOverlay.style.display = 'none'; // Hide anyway
+                UI.startOverlay.style.display = 'none'; 
             });
         } else {
              UI.startOverlay.style.display = 'none';
@@ -503,7 +523,7 @@ const App = {
         }
     }
   }
-};
+}; 
 App.init(); 
 </script>
 </body>
