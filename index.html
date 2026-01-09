@@ -10,11 +10,8 @@
   <link rel="preconnect" href="https://www.youtube.com">
   <link rel="preconnect" href="https://www.google.com">
   <link rel="preconnect" href="https://api.rss2json.com">
-  <link rel="dns-prefetch" href="https://www.youtube.com">
-  <link rel="dns-prefetch" href="https://api.rss2json.com">
-
-  <link rel="icon" href="favicon.png" type="image/png">
   
+  <link rel="icon" href="favicon.png" type="image/png">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Gurmukhi:wght@400;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <script src="https://www.youtube.com/iframe_api"></script>
@@ -22,73 +19,120 @@
   <style>
     /* --- CORE STYLES --- */
     html, body {
-      margin: 0; padding: 0; height: 100%;
+      margin: 0; padding: 0; width: 100%; height: 100%;
       background-color: black; font-family: "Noto Sans Gurmukhi", sans-serif;
       overflow: hidden; -webkit-tap-highlight-color: transparent; 
       user-select: none; cursor: none;
-      /* CENTER THE APP ON SCREEN */
       display: flex; justify-content: center; align-items: center;
     }
     body.user-active { cursor: default; }
 
-    /* --- 16:9 ASPECT RATIO WRAPPER --- */
+    /* --- MAIN UI WRAPPER (Handles Rotation) --- */
+    #main-ui {
+      position: relative;
+      width: 100%; height: 100%;
+      display: flex; justify-content: center; align-items: center;
+      overflow: hidden;
+    }
+
+    /* Portrait Mode: Rotate EVERYTHING 90deg */
+    @media screen and (orientation: portrait) {
+        #main-ui {
+            width: 100vh; height: 100vw;
+            transform: rotate(90deg);
+        }
+    }
+
+    /* --- 16:9 VIDEO BOX --- */
     #app-box {
       position: relative;
-      width: 100%;
-      height: 100%;
-      max-width: 177.78vh; /* 16/9 = 1.777 */
-      max-height: 56.25vw; /* 9/16 = 0.5625 */
       background: black;
-      overflow: hidden;
+      width: 100%; height: 100%;
+      max-width: 177.78vh; /* 16/9 Aspect Ratio constraint */
+      max-height: 56.25vw; 
       aspect-ratio: 16/9;
-      box-shadow: 0 0 50px rgba(0,0,0,0.5);
+      box-shadow: 0 0 20px rgba(0,0,0,0.8);
+      z-index: 1; /* Sit below buttons/name if they overlap */
     }
 
-    #stream { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
-    .video-placeholder { width: 100%; height: 100%; background: black; }
-    
-    #hls-video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; display: none; }
-    #audio-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-position: center; background-size: cover; z-index: 1; display: none; }
-    #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; cursor: pointer; outline: none; }
+    /* Video Elements */
+    #stream, #hls-video, #audio-bg, #time-tv, #overlay, .video-placeholder { 
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+    }
+    #stream { z-index: 0; }
+    .video-placeholder { background: black; }
+    #hls-video { object-fit: cover; z-index: 1; display: none; }
+    #audio-bg { background-position: center; background-size: cover; z-index: 1; display: none; }
+    #overlay { z-index: 2; cursor: pointer; outline: none; }
 
-    /* TOGGLE BUTTON - SCALED RELATIVE TO APP BOX */
-    #toggleBtn {
+    /* --- NAVIGATION BUTTONS (Left/Right Black Bars) --- */
+    .nav-btn {
       position: absolute;
-      bottom: 4%; left: 2%; /* Percentages */
-      width: 4vh; height: 4vh; min-width: 30px; min-height: 30px;
-      border-radius: 50%; display: none; 
-      justify-content: center; align-items: center;
-      font-size: 2.5vh; font-family: Arial, sans-serif; font-weight: bold;
-      z-index: 10; cursor: pointer;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.6);
-      border: 2px solid rgba(255, 255, 255, 0.2);
-      transition: transform 0.2s ease;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 8vh; /* Large Arrows */
+      color: rgba(255, 215, 0, 0.4); /* Gold, Transparent */
+      padding: 20px;
+      cursor: pointer;
+      z-index: 20;
+      transition: all 0.2s;
+      user-select: none;
     }
-    #toggleBtn:active { transform: scale(0.9); }
-    .toggle-A { background-color: #00296B; color: #FFD700; }
-    .toggle-B { background-color: #FFD700; color: #00296B; }
-    
-    /* --- CENTERED TEXT FIX (PRESERVED) --- */
+    .nav-btn:hover, .nav-btn:active {
+        color: rgba(255, 215, 0, 1.0);
+        transform: translateY(-50%) scale(1.1);
+    }
+    #btn-prev { left: 1%; }
+    #btn-next { right: 1%; }
+
+    /* --- CHANNEL NAME (OUTSIDE 16:9 BOX) --- */
     #channelName {
-      position: absolute; bottom: 0; left: 0; width: 100%;
-      padding: 20px; font-size: 4vh; font-weight: bold;
-      text-align: center; z-index: 3;
+      position: absolute; 
+      bottom: 0; left: 0; width: 100%;
+      padding: 15px; 
+      font-size: 4vh; font-weight: bold;
+      text-align: center; 
+      z-index: 30; /* Above everything */
       transform: translateY(100%); opacity: 0;
       transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.5s ease;
       box-sizing: border-box;
+      pointer-events: none; /* Let clicks pass through */
     }
-    .style-main { background-color: rgba(0, 41, 107, 0.9) !important; color: #FFD700 !important; }
-    .style-alt { background-color: #FFD700 !important; color: #00296B !important; }
+    .style-main { 
+        background: linear-gradient(to top, rgba(0, 41, 107, 0.9) 0%, rgba(0,0,0,0) 100%);
+        color: #FFD700 !important; 
+        text-shadow: 2px 2px 4px black;
+    }
+    .style-alt { 
+        background: linear-gradient(to top, rgba(255, 215, 0, 0.9) 0%, rgba(0,0,0,0) 100%);
+        color: #00296B !important; 
+        text-shadow: none;
+    }
     #channelName.show { transform: translateY(0); opacity: 1; }
-    
+
+    /* --- TOGGLE BTN (Inside 16:9 Box) --- */
+    #toggleBtn {
+      position: absolute; bottom: 5%; left: 3%;
+      width: 5vh; height: 5vh; border-radius: 50%; display: none; 
+      justify-content: center; align-items: center;
+      font-size: 3vh; font-family: Arial, sans-serif; font-weight: bold;
+      z-index: 10; cursor: pointer;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+    }
+    .toggle-A { background-color: #00296B; color: #FFD700; }
+    .toggle-B { background-color: #FFD700; color: #00296B; }
+
+    /* --- LOADING SPINNER --- */
     .loading {
       position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      width: 8vh; height: 8vh; border: 0.8vh solid rgba(255, 213, 0, 0.2);
+      width: 10vh; height: 10vh; border: 1vh solid rgba(255, 213, 0, 0.2);
       border-radius: 50%; border-top-color: #ffd500;
       animation: spin 1s linear infinite; z-index: 4; display: none;
     }
     @keyframes spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
-    
+
+    /* --- TIME MODE --- */
     #time-tv {
       position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; z-index: 1; 
       background: url("haarimandr.png") no-repeat center center; background-size: cover; font-family: "Arial Black", sans-serif;
@@ -96,39 +140,33 @@
     #time-tv .clock { position: absolute; top: 6%; right: 3%; font-size: 15vh; color: #FFD700; text-shadow: 0 0 10px #FFD700; }
     #time-tv .date { position: absolute; top: 2%; right: 3.5%; font-size: 5vh; color: #FFE066; }
 
-    /* --- PORTRAIT WARNING --- */
-    #rotate-msg {
-      display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-      background: #000; z-index: 9999; flex-direction: column;
-      justify-content: center; align-items: center; text-align: center;
-      color: #FFD700; font-size: 24px; font-weight: bold;
-    }
-    /* Show warning only on mobile portrait */
-    @media screen and (max-aspect-ratio: 1/1) and (max-width: 768px) {
-      #rotate-msg { display: flex; }
-      #app-box { display: none; }
-    }
   </style>
 </head>
 <body>
 
-  <div id="rotate-msg"><div>Please Rotate Device ⟳</div></div>
+  <div id="main-ui">
+      
+      <div id="btn-prev" class="nav-btn">❮</div>
 
-  <div id="app-box">
-    <div id="stream"></div>
-    <video id="hls-video" playsinline></video>
-    <audio id="bg-audio" preload="auto"></audio>
-    <div id="audio-bg"></div>
-    <div id="time-tv"><div class="clock"></div><div class="date"></div></div>
-    
-    <div id="toggleBtn" class="toggle-A">A</div>
-    <div id="overlay" tabindex="0"></div>
-    <div id="channelName" class="style-main"></div>
-    <div class="loading" id="loading"></div>
+      <div id="app-box">
+        <div id="stream"></div>
+        <video id="hls-video" playsinline></video>
+        <audio id="bg-audio" preload="auto"></audio>
+        <div id="audio-bg"></div>
+        <div id="time-tv"><div class="clock"></div><div class="date"></div></div>
+        
+        <div id="toggleBtn" class="toggle-A">A</div>
+        <div id="overlay" tabindex="0"></div>
+        <div class="loading" id="loading"></div>
+      </div>
+
+      <div id="btn-next" class="nav-btn">❯</div>
+
+      <div id="channelName" class="style-main"></div>
+
   </div>
 
 <script>
-  
 const Config = {
   SCROLL_SPEED_MS: 350,
   AUTO_REFRESH_MS: 10800000, 
@@ -163,10 +201,9 @@ const AppState = {
   activeLoadId: 0, 
   lastScrollTime: 0, 
   timers: { load: null, banner: null, watchdog: null, refresh: null },
-  wakeLock: null // ANDROID: Wake Lock state
+  wakeLock: null
 };
 
-// DOM Cache (Updated for App Box)
 const UI = {
   stream: document.getElementById('stream'),
   hlsVideo: document.getElementById('hls-video'),
@@ -178,12 +215,13 @@ const UI = {
   toggleBtn: document.getElementById('toggleBtn'),
   bgAudio: document.getElementById('bg-audio'),
   clock: document.querySelector('#time-tv .clock'),
-  date: document.querySelector('#time-tv .date')
+  date: document.querySelector('#time-tv .date'),
+  btnPrev: document.getElementById('btn-prev'),
+  btnNext: document.getElementById('btn-next')
 };
 
 const PlayerService = {
   ytPlayer: null, hls: null,
-
   cleanup() {
     if (this.ytPlayer) {
       if(typeof this.ytPlayer.stopVideo === 'function') try { this.ytPlayer.stopVideo(); } catch(e){}
@@ -191,23 +229,19 @@ const PlayerService = {
     }
     this.ytPlayer = null;
     if (this.hls) { try { this.hls.destroy(); } catch(e){} this.hls = null; }
-
     UI.bgAudio.pause(); UI.bgAudio.src = ""; UI.bgAudio.currentTime = 0; 
     UI.audioBg.style.display = 'none'; UI.timeTv.style.display = 'none';
     UI.stream.innerHTML = ''; UI.hlsVideo.pause(); UI.hlsVideo.src = ""; UI.hlsVideo.style.display = 'none';
     clearTimeout(AppState.timers.watchdog);
   },
-
   initYouTube(divId, videoData, channelObj, loadId) {
     if (loadId !== AppState.activeLoadId) return;
     if (!window.YT || !window.YT.Player) { setTimeout(() => this.initYouTube(divId, videoData, channelObj, loadId), 100); return; }
-
     const playerOpts = {
          height: '100%', width: '100%', 
          playerVars: { 'autoplay': 1, 'mute': 1, 'controls': 0, 'rel': 0, 'modestbranding': 1, 'iv_load_policy': 3, 'fs': 0 },
          events: { 'onReady': (e) => this.onPlayerReady(e, loadId), 'onStateChange': (e) => this.onStateChange(e, channelObj, loadId), 'onError': (e) => this.onError(e, videoData, channelObj, loadId, divId) }
     };
-
     if (videoData.type === 'channel_live') {
        const embedUrl = `https://www.youtube.com/embed/live_stream?channel=${videoData.id}&autoplay=1&mute=1&controls=0&enablejsapi=1&origin=${window.location.origin}`;
        const iframe = document.createElement('iframe');
@@ -219,13 +253,11 @@ const PlayerService = {
        this.ytPlayer = new YT.Player(divId, playerOpts);
     }
   },
-
   onPlayerReady(event, loadId) {
     if (loadId !== AppState.activeLoadId) return;
     UI.loading.style.display = 'none'; event.target.playVideo();
     setTimeout(() => { try { event.target.unMute(); } catch(e){} }, 500); setTimeout(() => { try { event.target.unMute(); } catch(e){} }, 2000);
   },
-
   onStateChange(event, channelObj, loadId) {
     if (loadId !== AppState.activeLoadId) return;
     if (event.data === YT.PlayerState.ENDED && channelObj.fallback) {
@@ -235,7 +267,6 @@ const PlayerService = {
          this.initYouTube(newDivId, {type: 'video_id', id: channelObj.fallback}, channelObj, loadId);
     }
   },
-
   onError(event, videoData, channelObj, loadId, divId) {
     if (loadId !== AppState.activeLoadId) return;
     if (channelObj.type === 'direct-rss' && videoData.type === 'channel_live') {
@@ -281,49 +312,44 @@ const App = {
     this.loadChannel(AppState.currentChannel, 0);
     this.setupInputs();
     this.setupClock();
-    
-    // --- ANDROID START ---
-    this.setupTouch();      
     this.requestWakeLock(); 
+    
+    // --- ANDROID PWA LOCK ---
     if (screen.orientation && screen.orientation.lock) {
-        screen.orientation.lock('landscape').catch(()=> console.log("Install app to lock orientation"));
+        screen.orientation.lock('landscape').catch(()=>{});
     }
-    // --- ANDROID END ---
 
     AppState.timers.refresh = setTimeout(() => window.location.reload(), Config.AUTO_REFRESH_MS);
   },
 
-  // --- ANDROID: Keep Screen On ---
   async requestWakeLock() {
     if ('wakeLock' in navigator) {
       try {
         AppState.wakeLock = await navigator.wakeLock.request('screen');
+        // Re-request lock when app becomes visible again
         document.addEventListener('visibilitychange', async () => {
           if (AppState.wakeLock !== null && document.visibilityState === 'visible') {
             AppState.wakeLock = await navigator.wakeLock.request('screen');
           }
         });
-      } catch (err) { console.log("WakeLock Error", err); }
+      } catch (err) { }
     }
   },
 
-  // --- ANDROID: Touch Gestures ---
-  setupTouch() {
-    let ts = 0, te = 0;
-    document.body.addEventListener('touchstart', e => { ts = e.changedTouches[0].screenX; }, {passive: false});
-    document.body.addEventListener('touchend', e => {
-      te = e.changedTouches[0].screenX;
-      if (te < ts - 50) this.changeChannel(1);
-      if (te > ts + 50) this.changeChannel(-1);
-    }, {passive: false});
-  },
-
-  // --- ANDROID: Media Session (Lock Screen Info) ---
   updateMediaSession(name) {
+    // BACKGROUND AUDIO SUPPORT: Metadata & Handlers
     if ('mediaSession' in navigator) {
-      navigator.mediaSession.metadata = new MediaMetadata({ title: name, artist: "Gurbani Stream", artwork: [{ src: 'favicon.png', sizes: '96x96', type: 'image/png' }] });
+      navigator.mediaSession.metadata = new MediaMetadata({ 
+          title: name, 
+          artist: "Gurbani Stream", 
+          artwork: [{ src: 'favicon.png', sizes: '96x96', type: 'image/png' }] 
+      });
+      
+      // Handlers keep the session alive in background
       navigator.mediaSession.setActionHandler('previoustrack', () => this.changeChannel(-1));
       navigator.mediaSession.setActionHandler('nexttrack', () => this.changeChannel(1));
+      navigator.mediaSession.setActionHandler('play', () => { if(AppState.currentChannel===0) this.toggleCh0Audio(); });
+      navigator.mediaSession.setActionHandler('pause', () => { if(AppState.currentChannel===0) this.toggleCh0Audio(); });
     }
   },
 
@@ -346,14 +372,24 @@ const App = {
     window.addEventListener('mousemove', wakeUI); window.addEventListener('click', wakeUI);
 
     UI.toggleBtn.addEventListener('click', (e) => { e.stopPropagation(); this.triggerChannelLoad(AppState.currentChannel); });
-    UI.overlay.addEventListener('click', () => this.changeChannel(1));
+    
+    // --- CONDITIONALLY ENABLE OVERLAY CLICK ---
+    // If it's a touch device (Android), DO NOT add click listener to overlay.
+    // If it's PC or TV (No touch), ADD the listener.
+    const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+    if (!isTouch) {
+        UI.overlay.addEventListener('click', () => this.changeChannel(1));
+    }
+    
+    // --- NAV BUTTONS ---
+    UI.btnPrev.addEventListener('click', (e) => { e.stopPropagation(); this.changeChannel(-1); wakeUI(); });
+    UI.btnNext.addEventListener('click', (e) => { e.stopPropagation(); this.changeChannel(1); wakeUI(); });
 
     let keyBuffer = "";
     let bufferTimer = null;
 
     window.addEventListener('keydown', (e) => {
       const k = e.key; const c = e.keyCode; const now = Date.now();
-      
       if (!/^[0-9]$/.test(k)) {
           if (now - AppState.lastScrollTime < Config.KEY_THROTTLE_MS) return; 
           AppState.lastScrollTime = now;
@@ -389,14 +425,13 @@ const App = {
   triggerChannelLoad(index) {
     const isSame = (AppState.currentChannel === index);
     const channel = CHANNELS[index];
-
     if (isSame && channel.type === 'time') { this.toggleCh0Audio(); return; }
     if (isSame && channel.allowToggle) AppState.streamToggle = (AppState.streamToggle === 0) ? 1 : 0;
     else AppState.streamToggle = 0;
 
     AppState.currentChannel = index;
     this.showBanner(channel.name, AppState.streamToggle);
-    this.updateMediaSession(channel.name); // ANDROID: Update Lock Screen
+    this.updateMediaSession(channel.name);
     
     clearTimeout(AppState.timers.load);
     AppState.activeLoadId++; const thisId = AppState.activeLoadId;
