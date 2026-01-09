@@ -58,22 +58,32 @@
     .toggle-A { background-color: #00296B; color: #FFD700; }
     .toggle-B { background-color: #FFD700; color: #00296B; }
     
-    /* --- CENTERED TEXT FIX --- */
+    /* --- UPDATED: CENTERED & SMOOTH BANNER --- */
     #channelName {
       position: absolute; 
       bottom: 0; 
       left: 0; 
       width: 100%;
-      /* FIX: Equal padding makes it centered */
-      padding: 20px; 
+      min-height: 80px; /* Ensures the blue box has size even with short text */
+      
+      /* Flexbox for Perfect Centering */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      
+      padding: 10px 20px; 
       font-size: 24px; 
       font-weight: bold;
       text-align: center; 
       z-index: 3;
-      transform: translateY(100%); 
+      box-sizing: border-box;
+
+      /* Smooth, Non-Jittery Transition */
+      transform: translateY(20px); /* Small movement instead of 100% */
       opacity: 0;
-      transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.5s ease;
+      transition: opacity 0.4s ease, transform 0.4s ease;
     }
+    
     .style-main { 
       background-color: rgba(0, 41, 107, 0.9) !important; 
       color: #FFD700 !important; 
@@ -82,6 +92,7 @@
       background-color: #FFD700 !important; 
       color: #00296B !important; 
     }
+    
     #channelName.show { 
       transform: translateY(0); 
       opacity: 1; 
@@ -332,7 +343,7 @@ const App = {
         e.preventDefault(); this.changeChannel(-1);
       } 
       
-      // NUMBER INPUT
+      // NUMBER INPUT (Supports 1 then 2 for Ch 12)
       else if (/^[0-9]$/.test(k)) {
         e.preventDefault();
         keyBuffer += k;
@@ -347,7 +358,7 @@ const App = {
             else targetIndex = CHANNELS.findIndex(ch => ch.name.startsWith(num + "."));
 
             if (targetIndex !== -1) this.triggerChannelLoad(targetIndex);
-        }, 1200); // 1.2s to type second digit
+        }, 1000); // 1.0s delay to allow second digit press
       }
     });
   },
@@ -453,9 +464,7 @@ const App = {
     }
   }
 };
-  
 App.init(); 
 </script>
 </body>
 </html>
-
