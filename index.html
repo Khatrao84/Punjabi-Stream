@@ -27,7 +27,8 @@
     }
     body.user-active { cursor: default; }
 
-    /* --- MAIN UI WRAPPER (Handles Rotation) --- */
+    /* --- ROTATION WRAPPER --- */
+    /* Rotates the entire UI 90 degrees if phone is vertical */
     #main-ui {
       position: relative;
       width: 100%; height: 100%;
@@ -35,38 +36,21 @@
       overflow: hidden;
     }
 
-    /* Portrait Mode: Rotate EVERYTHING 90deg and Force Full Size */
     @media screen and (orientation: portrait) {
         #main-ui {
-            width: 100vh; height: 100vw;
+            width: 100vh; height: 100vw; /* Swap Width/Height */
             transform: rotate(90deg);
             transform-origin: center center;
         }
     }
 
-    /* --- 16:9 VIDEO BOX --- */
+    /* --- VIDEO CONTAINER (FULL SCREEN) --- */
     #app-box {
       position: relative;
       background: black;
       width: 100%; 
       height: 100%;
-      
-      /* DEFAULT (Landscape/PC): Constrain to 16:9 viewport limits */
-      max-width: 177.78vh; 
-      max-height: 56.25vw; 
-      aspect-ratio: 16/9;
-      
-      box-shadow: 0 0 20px rgba(0,0,0,0.8);
       z-index: 1;
-      display: flex; justify-content: center; align-items: center;
-    }
-
-    /* OVERRIDE FOR PORTRAIT: Remove viewport constraints so it fills the rotated screen */
-    @media screen and (orientation: portrait) {
-        #app-box {
-            max-width: 100%; 
-            max-height: 100%;
-        }
     }
 
     /* Video Elements */
@@ -79,13 +63,13 @@
     #audio-bg { background-position: center; background-size: cover; z-index: 1; display: none; }
     #overlay { z-index: 2; cursor: pointer; outline: none; }
 
-    /* --- NAVIGATION BUTTONS (Left/Right Black Bars) --- */
+    /* --- NAVIGATION ARROWS --- */
     .nav-btn {
       position: absolute;
       top: 50%;
       transform: translateY(-50%);
       font-size: 8vh; 
-      color: rgba(255, 215, 0, 0.4); /* Gold, Transparent */
+      color: rgba(255, 215, 0, 0.4); 
       padding: 20px;
       cursor: pointer;
       z-index: 20;
@@ -96,10 +80,10 @@
         color: rgba(255, 215, 0, 1.0);
         transform: translateY(-50%) scale(1.1);
     }
-    #btn-prev { left: 1%; }
-    #btn-next { right: 1%; }
+    #btn-prev { left: 0; }
+    #btn-next { right: 0; }
 
-    /* --- CHANNEL NAME (OUTSIDE 16:9 BOX) --- */
+    /* --- CHANNEL NAME (Original Design) --- */
     #channelName {
       position: absolute; 
       bottom: 0; left: 0; width: 100%;
@@ -113,18 +97,16 @@
       pointer-events: none; 
     }
     .style-main { 
-        background: linear-gradient(to top, rgba(0, 41, 107, 0.9) 0%, rgba(0,0,0,0) 100%);
+        background-color: rgba(0, 41, 107, 0.9) !important; 
         color: #FFD700 !important; 
-        text-shadow: 2px 2px 4px black;
     }
     .style-alt { 
-        background: linear-gradient(to top, rgba(255, 215, 0, 0.9) 0%, rgba(0,0,0,0) 100%);
+        background-color: #FFD700 !important; 
         color: #00296B !important; 
-        text-shadow: none;
     }
     #channelName.show { transform: translateY(0); opacity: 1; }
 
-    /* --- TOGGLE BTN (Inside 16:9 Box) --- */
+    /* --- TOGGLE BUTTON --- */
     #toggleBtn {
       position: absolute; bottom: 5%; left: 3%;
       width: 5vh; height: 5vh; border-radius: 50%; display: none; 
@@ -137,7 +119,7 @@
     .toggle-A { background-color: #00296B; color: #FFD700; }
     .toggle-B { background-color: #FFD700; color: #00296B; }
 
-    /* --- LOADING SPINNER --- */
+    /* --- LOADING --- */
     .loading {
       position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
       width: 10vh; height: 10vh; border: 1vh solid rgba(255, 213, 0, 0.2);
@@ -172,11 +154,11 @@
         <div id="toggleBtn" class="toggle-A">A</div>
         <div id="overlay" tabindex="0"></div>
         <div class="loading" id="loading"></div>
+        
+        <div id="channelName" class="style-main"></div>
       </div>
 
       <div id="btn-next" class="nav-btn">❯</div>
-
-      <div id="channelName" class="style-main"></div>
 
   </div>
 
@@ -214,8 +196,7 @@ const AppState = {
   streamToggle: 0,
   activeLoadId: 0, 
   lastScrollTime: 0, 
-  timers: { load: null, banner: null, watchdog: null, refresh: null },
-  wakeLock: null
+  timers: { load: null, banner: null, watchdog: null, refresh: null }
 };
 
 const UI = {
@@ -326,43 +307,8 @@ const App = {
     this.loadChannel(AppState.currentChannel, 0);
     this.setupInputs();
     this.setupClock();
-    this.requestWakeLock(); 
-    
-    // --- ANDROID PWA LOCK ---
-    if (screen.orientation && screen.orientation.lock) {
-        screen.orientation.lock('landscape').catch(()=>{});
-    }
-
+    // No background services (WakeLock/MediaSession removed)
     AppState.timers.refresh = setTimeout(() => window.location.reload(), Config.AUTO_REFRESH_MS);
-  },
-
-  async requestWakeLock() {
-    if ('wakeLock' in navigator) {
-      try {
-        AppState.wakeLock = await navigator.wakeLock.request('screen');
-        // Re-request lock when app becomes visible again
-        document.addEventListener('visibilitychange', async () => {
-          if (AppState.wakeLock !== null && document.visibilityState === 'visible') {
-            AppState.wakeLock = await navigator.wakeLock.request('screen');
-          }
-        });
-      } catch (err) { }
-    }
-  },
-
-  updateMediaSession(name) {
-    // BACKGROUND AUDIO SUPPORT
-    if ('mediaSession' in navigator) {
-      navigator.mediaSession.metadata = new MediaMetadata({ 
-          title: name, 
-          artist: "Gurbani Stream", 
-          artwork: [{ src: 'favicon.png', sizes: '96x96', type: 'image/png' }] 
-      });
-      navigator.mediaSession.setActionHandler('previoustrack', () => this.changeChannel(-1));
-      navigator.mediaSession.setActionHandler('nexttrack', () => this.changeChannel(1));
-      navigator.mediaSession.setActionHandler('play', () => { if(AppState.currentChannel===0) this.toggleCh0Audio(); });
-      navigator.mediaSession.setActionHandler('pause', () => { if(AppState.currentChannel===0) this.toggleCh0Audio(); });
-    }
   },
 
   setupClock() {
@@ -385,7 +331,7 @@ const App = {
 
     UI.toggleBtn.addEventListener('click', (e) => { e.stopPropagation(); this.triggerChannelLoad(AppState.currentChannel); });
     
-    // --- BLOCK TOUCH ON VIDEO (Allow only Click) ---
+    // --- BLOCK TOUCH ON VIDEO (Allow only Click on PC/TV) ---
     const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
     if (!isTouch) {
         UI.overlay.addEventListener('click', () => this.changeChannel(1));
@@ -441,7 +387,6 @@ const App = {
 
     AppState.currentChannel = index;
     this.showBanner(channel.name, AppState.streamToggle);
-    this.updateMediaSession(channel.name);
     
     clearTimeout(AppState.timers.load);
     AppState.activeLoadId++; const thisId = AppState.activeLoadId;
