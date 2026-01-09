@@ -64,47 +64,73 @@
     #audio-bg { background-position: center; background-size: cover; z-index: 1; display: none; }
     #overlay { z-index: 2; cursor: pointer; outline: none; }
 
-    /* --- NAVIGATION ARROWS --- */
+    /* --- BIGGER NAVIGATION BUTTONS --- */
     .nav-btn {
       position: absolute;
       top: 50%;
       transform: translateY(-50%);
-      font-size: 8vh; 
-      color: rgba(255, 215, 0, 0.4); 
-      padding: 20px;
+      width: 12vh; height: 12vh;
+      display: flex; justify-content: center; align-items: center;
+      font-size: 6vh; 
+      color: #FFD700;
+      background-color: rgba(0, 41, 107, 0.6); 
+      border: 2px solid rgba(255, 215, 0, 0.5); 
+      border-radius: 50%; 
       cursor: pointer;
       z-index: 20;
-      transition: all 0.2s;
       user-select: none;
+      box-shadow: 0 0 15px rgba(0,0,0,0.5);
+      transition: transform 0.1s, background-color 0.2s;
     }
-    .nav-btn:hover, .nav-btn:active {
-        color: rgba(255, 215, 0, 1.0);
-        transform: translateY(-50%) scale(1.1);
+    .nav-btn:active {
+        background-color: rgba(0, 41, 107, 1.0); 
+        transform: translateY(-50%) scale(0.95);
     }
-    #btn-prev { left: 0; }
-    #btn-next { right: 0; }
+    #btn-prev { left: 2%; }
+    #btn-next { right: 2%; }
 
-    /* --- CHANNEL NAME --- */
+    /* --- CHANNEL NAME BOX (CURVED & BLURRED) --- */
     #channelName {
       position: absolute; 
       bottom: 0; left: 0; width: 100%;
-      padding: 15px; 
-      font-size: 4vh; font-weight: bold;
+      
+      /* Spacing */
+      padding: 3vh 2vh 2vh 2vh; /* Extra top padding for the curve */
+      
+      /* Big Text */
+      font-size: 6vh; 
+      font-weight: bold;
       text-align: center; 
       z-index: 30; 
+      
+      /* Animation */
       transform: translateY(100%); opacity: 0;
       transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.5s ease;
+      
       box-sizing: border-box;
       pointer-events: none; 
+      
+      /* CURVED TOP EDGE (Convex Arch) */
+      /* 50% 50% defines width curve, 30px defines height of curve */
+      border-radius: 50% 50% 0 0 / 40px 40px 0 0;
     }
+
+    /* Style A: Blue Box + Blue Blur */
     .style-main { 
-        background-color: rgba(0, 41, 107, 0.9) !important; 
+        background-color: rgba(0, 41, 107, 0.95) !important; 
         color: #FFD700 !important; 
+        /* Upward Blur Effect */
+        box-shadow: 0 -20px 30px 10px rgba(0, 41, 107, 0.8);
     }
+
+    /* Style B: Gold Box + Gold Blur */
     .style-alt { 
         background-color: #FFD700 !important; 
         color: #00296B !important; 
+        /* Upward Blur Effect */
+        box-shadow: 0 -20px 30px 10px rgba(255, 215, 0, 0.8);
     }
+
     #channelName.show { transform: translateY(0); opacity: 1; }
 
     /* --- TOGGLE BUTTON --- */
@@ -330,10 +356,8 @@ const DataService = {
 
 const App = {
   init() {
-    // --- ANDROID FIX: Start at Channel 0 (Sukhmani Sahib) ---
-    // Note: Channel 0 is at the END of the list (Index 14)
+    // ANDROID OVERRIDE: Always start at Ch 0 (Sukhmani Sahib)
     if (/Android/i.test(navigator.userAgent)) {
-        // Find index of the channel named "0. ..."
         const ch0Index = CHANNELS.findIndex(ch => ch.name.startsWith("0."));
         if (ch0Index !== -1) AppState.currentChannel = ch0Index;
     }
@@ -523,7 +547,8 @@ const App = {
         }
     }
   }
-}; 
+};
+  
 App.init(); 
 </script>
 </body>
