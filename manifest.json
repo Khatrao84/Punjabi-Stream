@@ -1,6 +1,6 @@
 {
   "name": "Gurbani Stream",
-  "short_name": "Gurbani",
+  "short_name": "Gurbani Stream",
   "start_url": "index.html",
   "display": "fullscreen",
   "orientation": "landscape",
@@ -11,9 +11,5 @@
       "src": "favicon.png",
       "sizes": "192x192",
       "type": "image/png"
-    }
-  ]
+    }  ]
 }
-
-
-
