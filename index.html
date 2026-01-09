@@ -35,11 +35,12 @@
       overflow: hidden;
     }
 
-    /* Portrait Mode: Rotate EVERYTHING 90deg */
+    /* Portrait Mode: Rotate EVERYTHING 90deg and Force Full Size */
     @media screen and (orientation: portrait) {
         #main-ui {
             width: 100vh; height: 100vw;
             transform: rotate(90deg);
+            transform-origin: center center;
         }
     }
 
@@ -47,12 +48,25 @@
     #app-box {
       position: relative;
       background: black;
-      width: 100%; height: 100%;
-      max-width: 177.78vh; /* 16/9 Aspect Ratio constraint */
+      width: 100%; 
+      height: 100%;
+      
+      /* DEFAULT (Landscape/PC): Constrain to 16:9 viewport limits */
+      max-width: 177.78vh; 
       max-height: 56.25vw; 
       aspect-ratio: 16/9;
+      
       box-shadow: 0 0 20px rgba(0,0,0,0.8);
-      z-index: 1; /* Sit below buttons/name if they overlap */
+      z-index: 1;
+      display: flex; justify-content: center; align-items: center;
+    }
+
+    /* OVERRIDE FOR PORTRAIT: Remove viewport constraints so it fills the rotated screen */
+    @media screen and (orientation: portrait) {
+        #app-box {
+            max-width: 100%; 
+            max-height: 100%;
+        }
     }
 
     /* Video Elements */
@@ -70,7 +84,7 @@
       position: absolute;
       top: 50%;
       transform: translateY(-50%);
-      font-size: 8vh; /* Large Arrows */
+      font-size: 8vh; 
       color: rgba(255, 215, 0, 0.4); /* Gold, Transparent */
       padding: 20px;
       cursor: pointer;
@@ -92,11 +106,11 @@
       padding: 15px; 
       font-size: 4vh; font-weight: bold;
       text-align: center; 
-      z-index: 30; /* Above everything */
+      z-index: 30; 
       transform: translateY(100%); opacity: 0;
       transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.5s ease;
       box-sizing: border-box;
-      pointer-events: none; /* Let clicks pass through */
+      pointer-events: none; 
     }
     .style-main { 
         background: linear-gradient(to top, rgba(0, 41, 107, 0.9) 0%, rgba(0,0,0,0) 100%);
@@ -337,15 +351,13 @@ const App = {
   },
 
   updateMediaSession(name) {
-    // BACKGROUND AUDIO SUPPORT: Metadata & Handlers
+    // BACKGROUND AUDIO SUPPORT
     if ('mediaSession' in navigator) {
       navigator.mediaSession.metadata = new MediaMetadata({ 
           title: name, 
           artist: "Gurbani Stream", 
           artwork: [{ src: 'favicon.png', sizes: '96x96', type: 'image/png' }] 
       });
-      
-      // Handlers keep the session alive in background
       navigator.mediaSession.setActionHandler('previoustrack', () => this.changeChannel(-1));
       navigator.mediaSession.setActionHandler('nexttrack', () => this.changeChannel(1));
       navigator.mediaSession.setActionHandler('play', () => { if(AppState.currentChannel===0) this.toggleCh0Audio(); });
@@ -373,9 +385,7 @@ const App = {
 
     UI.toggleBtn.addEventListener('click', (e) => { e.stopPropagation(); this.triggerChannelLoad(AppState.currentChannel); });
     
-    // --- CONDITIONALLY ENABLE OVERLAY CLICK ---
-    // If it's a touch device (Android), DO NOT add click listener to overlay.
-    // If it's PC or TV (No touch), ADD the listener.
+    // --- BLOCK TOUCH ON VIDEO (Allow only Click) ---
     const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
     if (!isTouch) {
         UI.overlay.addEventListener('click', () => this.changeChannel(1));
