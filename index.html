@@ -74,18 +74,19 @@
       opacity: 0;
       transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.5s ease;
     }
-    .style-main { 
-      background-color: rgba(0, 41, 107, 0.9) !important; 
-      color: #FFD700 !important; 
+    
+     .style-main { 
+        background: linear-gradient(to top, rgba(0, 41, 107, 0.9) 0%, rgba(0,0,0,0) 100%);
+        color: #FFD700 !important; 
+        text-shadow: 2px 2px 4px black;
     }
     .style-alt { 
-      background-color: #FFD700 !important; 
-      color: #00296B !important; 
+        background: linear-gradient(to top, rgba(255, 215, 0, 0.9) 0%, rgba(0,0,0,0) 100%);
+        color: #00296B !important; 
+        text-shadow: none;
     }
-    #channelName.show { 
-      transform: translateY(0); 
-      opacity: 1; 
-    }
+    #channelName.show { transform: translateY(0); opacity: 1; }
+    
     
     .loading {
       position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -458,4 +459,5 @@ App.init();
 </script>
 </body>
 </html>
+
 
