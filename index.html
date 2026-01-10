@@ -48,8 +48,8 @@
       bottom: 0; 
       left: 0; 
       width: 100%;
-      /* UPDATED: 32px Top, 9px Bottom (Moves text UP 1px, keeps box size same) */
-      padding: 32px 20px 9px 20px; 
+      /* UPDATED: 31px Top, 10px Bottom (Moves text UP 1px, Total 41px) */
+      padding: 31px 20px 10px 20px; 
       font-size: 24px; 
       font-weight: bold;
       text-align: center; 
@@ -194,7 +194,7 @@ const CHANNELS = [
   { name: "5. ਸ਼੍ਰੀ ਆਨੰਦਪੁਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCSx5035_us8h8DOp_YhQDaw", type: "direct" },
   { name: "6. ਸ਼੍ਰੀ ਦਮਦਮਾ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCY8jMpyRRcdzSf6uLiU6izQ", type: "direct" },
   { name: "7. ਸ਼੍ਰੀ ਦੂਖ-ਨਿਵਾਰਨ ਸਾਹਿਬ ਲੁਧਿਆਣਾ ਲਾਈਵ", channelId: "UCPKPN4bzM8Ja-F_kIEZoAhA", type: "direct-rss" },
-  { name: "8. ਸ਼੍ਰੀ ਦੂਖ-ਨਿਵਾਰਨ ਸਾਹਿਬ ਪਟਿਆਲਾ ਲਾਈਵ", channelId: "UC7Uf4ZOlCGM3zBCLqcNPtJg", type: "direct-rss" },
+  { name: "8. ਸ਼੍ਰੀ ਦੂਖ-ਨਿਵਾਰਨ ਸਾਹਿਬ ਪਟਿਆਲਾੀ ਲਾਈਵ", channelId: "UC7Uf4ZOlCGM3zBCLqcNPtJg", type: "direct-rss" },
   { name: "9. ਸ਼੍ਰੀ ਬਾਬਾ ਦੀਪ ਸਿੰਘ ਜੀ ਅੰਮ੍ਰਿਤਸਰ ਲਾਈਵ", channelId: "UCxWx-MPft_7mKrFtN6uOaAA", type: "direct" },
   { name: "10. ਸ਼੍ਰੀ ਪੰਜੋਖਰਾ ਸਾਹਿਬ ਅੰਬਾਲਾ ਲਾਈਵ", channelId: "UCWd5TUzbLUe6_TWKW9vaDmQ", type: "direct" },
   { name: "11. ਸ਼੍ਰੀ ਬੰਗਲਾ ਸਾਹਿਬ ਦਿੱਲੀ ਲਾਈਵ", channelId: "UCA1Jqo-WXVuMgs4WcD5f5Yw", type: "auto-rss" },
@@ -214,7 +214,7 @@ const AppState = {
   currentChannel: getInitialChannel(),
   streamToggle: 0,
   activeLoadId: 0, 
-  lastScrollTime: 0, 
+  lastScrollTime: Date.now(), // FIX: Initialize to NOW to prevent startup scroll bugs
   timers: { load: null, banner: null, watchdog: null, refresh: null },
   suppressClick: false
 };
@@ -455,7 +455,7 @@ const App = {
     // MIDDLE CLICK LOGIC: TOGGLE
     window.addEventListener('mousedown', (e) => {
         if (e.button === 1) { // Middle button
-            e.preventDefault(); // Prevent default autoscroll
+            e.preventDefault(); 
             this.triggerChannelLoad(AppState.currentChannel);
         }
     });
