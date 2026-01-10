@@ -439,7 +439,7 @@ const App = {
         clearTimeout(cursorTimeout);
         cursorTimeout = setTimeout(() => document.body.classList.remove('user-active'), 3000);
     };
-    window.addEventListener('mousemove', wakeUI); window.addEventListener('click', wakeUI); 
+    window.addEventListener('mousemove', wakeUI); window.addEventListener('click', wakeUI);
     // MOUSE WHEEL LOGIC (PC)
     window.addEventListener('wheel', (e) => {
         if (Math.abs(e.deltaY) < 10) return;
