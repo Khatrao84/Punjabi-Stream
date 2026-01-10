@@ -1,5 +1,5 @@
-// UPDATED TO VERSION 1.1 (Forces update)
-const CACHE_NAME = 'gurbani-app-v1.1'; 
+// UPDATED TO VERSION 1.2 (Forces update)
+const CACHE_NAME = 'gurbani-app-v1.2'; 
 
 const ASSETS = [
   '/',
