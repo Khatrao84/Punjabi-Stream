@@ -42,14 +42,15 @@
     #audio-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-position: center; background-size: cover; z-index: 1; display: none; }
     #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; cursor: pointer; outline: none; }
 
-    /* --- RESTORED TEXT POSITION --- */
+    /* --- TEXT POSITION ADJUSTED --- */
     #channelName {
       position: absolute; 
       bottom: 0; 
       left: 0; 
       width: 100%;
-      /* REVERTED: Back to original padding */
-      padding: 20px; 
+      /* UPDATED: Balanced to center text on purple line */
+      /* 28px Top pushes it down, 13px Bottom keeps it off the edge */
+      padding: 28px 20px 13px 20px; 
       font-size: 24px; 
       font-weight: bold;
       text-align: center; 
@@ -159,7 +160,7 @@ const CHANNELS = [
   { name: "5. ਸ਼੍ਰੀ ਆਨੰਦਪੁਰ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCSx5035_us8h8DOp_YhQDaw", type: "direct" },
   { name: "6. ਸ਼੍ਰੀ ਦਮਦਮਾ ਸਾਹਿਬ ਲਾਈਵ", channelId: "UCY8jMpyRRcdzSf6uLiU6izQ", type: "direct" },
   { name: "7. ਸ਼੍ਰੀ ਦੂਖ-ਨਿਵਾਰਨ ਸਾਹਿਬ ਲੁਧਿਆਣਾ ਲਾਈਵ", channelId: "UCPKPN4bzM8Ja-F_kIEZoAhA", type: "direct-rss" },
-  { name: "8. ਸ਼੍ਰੀ ਦੂਖ-ਨਿਵਾਰਨ ਸਾਹਿਬ ਪਟਿਆਲਾ ਲਾਈਵ", channelId: "UC7Uf4ZOlCGM3zBCLqcNPtJg", type: "direct-rss" },
+  { name: "8. ਸ਼੍ਰੀ ਦੂਖ-ਨਿਵਾਰਨ ਸਾਹਿਬ ਪਟਿਆਲਾੀ ਲਾਈਵ", channelId: "UC7Uf4ZOlCGM3zBCLqcNPtJg", type: "direct-rss" },
   { name: "9. ਸ਼੍ਰੀ ਬਾਬਾ ਦੀਪ ਸਿੰਘ ਜੀ ਅੰਮ੍ਰਿਤਸਰ ਲਾਈਵ", channelId: "UCxWx-MPft_7mKrFtN6uOaAA", type: "direct" },
   { name: "10. ਸ਼੍ਰੀ ਪੰਜੋਖਰਾ ਸਾਹਿਬ ਅੰਬਾਲਾ ਲਾਈਵ", channelId: "UCWd5TUzbLUe6_TWKW9vaDmQ", type: "direct" },
   { name: "11. ਸ਼੍ਰੀ ਬੰਗਲਾ ਸਾਹਿਬ ਦਿੱਲੀ ਲਾਈਵ", channelId: "UCA1Jqo-WXVuMgs4WcD5f5Yw", type: "auto-rss" },
@@ -406,6 +407,23 @@ const App = {
         cursorTimeout = setTimeout(() => document.body.classList.remove('user-active'), 3000);
     };
     window.addEventListener('mousemove', wakeUI); window.addEventListener('click', wakeUI);
+    
+    // MOUSE WHEEL LOGIC (PC)
+    window.addEventListener('wheel', (e) => {
+        if (Math.abs(e.deltaY) < 10) return;
+        const now = Date.now();
+        if (now - AppState.lastScrollTime < Config.KEY_THROTTLE_MS) return;
+        AppState.lastScrollTime = now;
+
+        if (e.deltaY < 0) {
+             // Forward/Up -> Toggle A/B
+             this.triggerChannelLoad(AppState.currentChannel);
+        } else {
+             // Backward/Down -> Prev Channel
+             this.changeChannel(-1);
+        }
+    });
+
     let touchStartX = 0; let touchStartY = 0; let pressTimer = null;
     UI.overlay.addEventListener('touchstart', (e) => {
         if (e.touches.length > 1) return; 
@@ -494,8 +512,8 @@ const App = {
     }
   }
 };
+  
 App.init(); 
 </script>
 </body>
 </html>
-
