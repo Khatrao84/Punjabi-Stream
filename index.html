@@ -42,14 +42,14 @@
     #audio-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-position: center; background-size: cover; z-index: 1; display: none; }
     #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; cursor: pointer; outline: none; }
 
-    /* --- TEXT POSITION ADJUSTED --- */
+    /* --- TEXT POSITION ADJUSTED (UP 1px) --- */
     #channelName {
       position: absolute; 
       bottom: 0; 
       left: 0; 
       width: 100%;
-      /* UPDATED: Moved text down 5px (33px Top, 8px Bottom) */
-      padding: 33px 20px 8px 20px; 
+      /* UPDATED: 32px Top, 9px Bottom (Moves text UP 1px, keeps box size same) */
+      padding: 32px 20px 9px 20px; 
       font-size: 24px; 
       font-weight: bold;
       text-align: center; 
@@ -442,19 +442,21 @@ const App = {
     };
     window.addEventListener('mousemove', wakeUI); window.addEventListener('click', wakeUI);
     
-    // MOUSE WHEEL LOGIC (PC)
+    // MOUSE WHEEL LOGIC: ANY SCROLL -> BACK
     window.addEventListener('wheel', (e) => {
         if (Math.abs(e.deltaY) < 10) return;
         const now = Date.now();
         if (now - AppState.lastScrollTime < Config.KEY_THROTTLE_MS) return;
         AppState.lastScrollTime = now;
+        // Any scroll direction triggers channel back (-1)
+        this.changeChannel(-1);
+    });
 
-        if (e.deltaY < 0) {
-             // Forward/Up -> Toggle A/B
-             this.triggerChannelLoad(AppState.currentChannel);
-        } else {
-             // Backward/Down -> Prev Channel
-             this.changeChannel(-1);
+    // MIDDLE CLICK LOGIC: TOGGLE
+    window.addEventListener('mousedown', (e) => {
+        if (e.button === 1) { // Middle button
+            e.preventDefault(); // Prevent default autoscroll
+            this.triggerChannelLoad(AppState.currentChannel);
         }
     });
 
@@ -550,5 +552,3 @@ App.init();
 </script>
 </body>
 </html>
-
-
